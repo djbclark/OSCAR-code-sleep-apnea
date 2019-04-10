@@ -16,10 +16,7 @@ The following programs and files are required to create Windows installers:
   Unicode version may be ok but I have not tested it.  The deployment batch file assumes that Inno Setup is
   installed into its default location: C:\Program Files (x86)\Inno Setup 5.  If you put it somewhere else, you
   will have to change the batch file. Do I need to install the InnoSetup Preprocessor???
-# Gawk for Windows from http://gnuwin32.sourceforge.net/packages/gawk.htm.  Download and install "Complete
-  package, except sources".  The deployment batch file assumes that gawk.exe is in your PATH (so put it
-  somewhere in your PATH).
-# GIT for windows, from https://gitforwindows.org/.  Again, you want git to be in your PATH.
+# GIT for windows, from https://gitforwindows.org/.  Again, you want git but not the mingw-tools to be in your PATH.
 # QT Open Source edition from https://www.qt.io/download.  I use version 5.12.2.  More recent versions may
   also work but I have not tested any. qt-unified-3.0.6???
 

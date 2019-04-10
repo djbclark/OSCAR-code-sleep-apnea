@@ -10,7 +10,7 @@
 :::
 ::: Requirements:
 :::     Inno Setup - http://www.jrsoftware.org/isinfo.php, installed to default Program Files (x86) location
-:::     gawk - http://gnuwin32.sourceforge.net/packages/gawk.htm, installed to somewhere in the PATH
+:::     Git for Windows - for gawk, installed to default Program files location. See README in repo root.
 :::
 ::: Three files should be placed in the OSCAR source code directory: OSCAR/OSCAR-code/oscar
 :::     deploy.bat -- this file
@@ -29,6 +29,10 @@
 
 setlocal
 
+::: Add Git mingw tools (awk) to path. They can not be added to global path as they break CMD.exe (find etc.)
+set PATH=%PATH%;%ProgramW6432%\Git\usr\bin
+
+echo PATH: %PATH%
 echo current dir is %CD%
 
 set toolDir=%~dp0
