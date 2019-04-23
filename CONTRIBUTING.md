@@ -36,7 +36,7 @@ If necessary, fork your own copy of the repo.  Then:
 4. Sync your branch with master:
 
         git checkout master
-        git pull master
+        git pull
         git checkout my-branch
         git merge master
 
