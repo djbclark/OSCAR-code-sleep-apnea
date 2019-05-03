@@ -22,8 +22,8 @@ Setting aside the religious wars that can arise over any development methodology
 ### How Do I Develop in a Branch?
 
 0. Create your own fork of the repo and configure it to stay up-to-date with the upstream repo.
-	* Go to https://gitlab.com/pholy/OSCAR-code and click on "Fork" in the top right of the project page.
-	* In your fork's sidebar, go to **Settings > Repository** and expand **Mirror a repository**.
+	* Go to https://gitlab.com/pholy/OSCAR-code and click on **Fork** in the top right of the project page.
+	* In your fork's sidebar, go to **Settings > Repository** then click on **Expand** for "Mirror a repository".
 	* Enter "https://gitlab.com/pholy/OSCAR-code" for the repository **URL**, make sure the mirror is set to **Pull** and then click **Mirror repository**.
 
 1. Create a branch to work on your feature or bugfix:
@@ -49,10 +49,10 @@ Setting aside the religious wars that can arise over any development methodology
 
 7. Create a merge request describing your proposed change, linking to any issues that it might address, and attaching your branch.
 	* On gitlab, create a new merge request from your branch into the upstream's master branch. The "git push" above will helpfully provide you with a direct URL to start this process. (Make sure you're logged into gitlab or you'll get a 404 error.) Otherwise you can do it manually by going to **Merge Requests > New Merge Request** and selecting your branch; upstream master is the default target.
-	* Fill in the title and description summarizing your proposed change. You don't need to go into exhaustive detail, since all of your commits and their comments will be attached to the request.
-	* Check the "Delete source branch when merge request is accepted" (optional but recommended).
+	* Fill in the **Title** and **Description** summarizing your proposed change. You don't need to go into exhaustive detail, since all of your commits and their comments will be attached to the request.
+	* Check the **Delete source branch when merge request is accepted** box (optional but recommended).
 	* Do **NOT** check "Squash commits": this will make your local copy think that the branch was never merged. (If you really want to squash commits, you'll need to use "-D" to delete your branch.)
-	* Click "Submit merge request".
+	* Click **Submit merge request**.
 	* You may need to repeat steps 2-6 a few times, if changes are needed before your request is accepted, or 4-6 if other changes are merged into master before your request is accepted.
 
 8. An upstream developer will eventually accept the merge request, which merges your branch into master and updates any linked issues.
