@@ -22,7 +22,7 @@ Setting aside the religious wars that can arise over any development methodology
 ### How Do I Develop in a Branch?
 
 0. Create your own fork of the repo and configure it to stay up-to-date with the upstream repo.
-	* Go to https://gitlab.com/pholy/OSCAR-code and click on "Fork".
+	* Go to https://gitlab.com/pholy/OSCAR-code and click on "Fork" in the top right of the project page..
 	* In your fork's sidebar, go to **Settings > Repository** and expand "Mirror a repository".
 	* Enter "https://gitlab.com/pholy/OSCAR-code" for the repository URL, make sure the mirror is set to "Pull" and then click "Mirror repository".
 
@@ -45,7 +45,7 @@ Setting aside the religious wars that can arise over any development methodology
 
 5. If there are any merge conflicts, resolve them and then build and test again. See below for details on resolving conflicts.
 
-6. Push your branch up to gitlab: `git push -u origin my-branch`. Note that `git push` by itself won't push a branch that doesn't exist upstream.
+6. Push your branch up to gitlab: `git push -u origin my-branch`. Note that `git push` by itself won't push a branch that doesn't exist upstream, so you need to do this the first time you push your branch. After that (if you need to push additional changes later), you can just use `git push`.
 
 7. Create a merge request describing your proposed change, linking to any issues that it might address, and attaching your branch.
 	* On gitlab, create a new merge request from your branch into the upstream's master branch. The "git push" above will helpfully provide you with a direct URL to start this process. (Make sure you're logged into gitlab or you'll get a 404 error.) Otherwise you can do it manually by going to **Merge Requests > New Merge Request** and selecting your branch; upstream master is the default target.
