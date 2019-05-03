@@ -22,8 +22,8 @@ Setting aside the religious wars that can arise over any development methodology
 ### How Do I Develop in a Branch?
 
 0. Create your own fork of the repo and configure it to stay up-to-date with the upstream repo.
-	* Go to [https://gitlab.com/pholy/OSCAR-code] and click on "Fork".
-	* In your fork's sidebar, go to Settings > Repository and expand "Mirror a repository".
+	* Go to https://gitlab.com/pholy/OSCAR-code and click on "Fork".
+	* In your fork's sidebar, go to **Settings > Repository** and expand "Mirror a repository".
 	* Enter "https://gitlab.com/pholy/OSCAR-code" for the repository URL, make sure the mirror is set to "Pull" and then click "Mirror repository".
 
 1. Create a branch to work on your feature or bugfix:
@@ -36,7 +36,7 @@ Setting aside the religious wars that can arise over any development methodology
 
 3. Test your code. See the instructions on how to build the project. It should build successfully, without warnings, and your feature should work as intended.
 
-4. While you've been working, the "master" branch might have advanced past where it was when you first created our branch from it. Before you try to reincorporate your branch back into the "master" branch, you need to make sure your branch has incorporated any intervening changes in master:
+4. Bring your branch up to date with the current master: while you've been working, the "master" branch might have advanced past where it was when you first created your branch from it. Before you try to reincorporate your branch back into the "master" branch, you need to make sure your branch has incorporated any intervening changes in master:
 
         git checkout master
         git pull
@@ -48,9 +48,9 @@ Setting aside the religious wars that can arise over any development methodology
 6. Push your branch up to gitlab: `git push -u origin my-branch`. Note that `git push` by itself won't push a branch that doesn't exist upstream.
 
 7. Create a merge request describing your proposed change, linking to any issues that it might address, and attaching your branch.
-	* On gitlab, create a new merge request from your branch into the upstream's master branch. The "git push" above will helpfully provide you with a direct URL to start this process. (Make sure you're logged into gitlab or you'll get a 404 error.) Otherwise you can do it manually by going to Merge Requests > New Merge Request and selecting your branch; upstream master is the default target.
+	* On gitlab, create a new merge request from your branch into the upstream's master branch. The "git push" above will helpfully provide you with a direct URL to start this process. (Make sure you're logged into gitlab or you'll get a 404 error.) Otherwise you can do it manually by going to **Merge Requests > New Merge Request** and selecting your branch; upstream master is the default target.
 	* Fill in the title and description summarizing your proposed change. You don't need to go into exhaustive detail, since all of your commits and their comments will be attached to the request.
-	* Optionally check the "Delete source branch when merge request is accepted".
+	* Check the "Delete source branch when merge request is accepted" (optional but recommended).
 	* Do **NOT** check "Squash commits". This will make your local copy think that the branch was never merged.
 	* Click "Submit merge request".
 	* You may need to repeat steps 2-6 a few times, if changes are needed before your request is accepted, or 4-6 if other changes are merged into master before your request is accepted.
