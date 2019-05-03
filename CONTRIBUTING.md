@@ -59,7 +59,9 @@ Setting aside the religious wars that can arise over any development methodology
 
 9. Once the branch has been merged, you can delete your local branch. Assuming you checked the "Delete source branch..." option above (which will only delete the branch on gitlab):
 
-        git fetch --all --prune
+        get checkout master
+        git pull
+        git fetch --prune
         git branch -d my-branch
 
 If you have commit access to the repo, you *can* theoretically skip steps 7 and 8 and just merge your branch into master directly, but this is discouraged, as it may circumvent automated tests or other workflow requirements. But if you absolutely can't bear to deal with creating a merge request in a particular situation, at least do your development in a branch rather than master!
