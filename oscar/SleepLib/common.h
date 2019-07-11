@@ -143,6 +143,10 @@ const QString getDeveloperName();
 const QString getDeveloperDomain();
 const QString getModifiedAppData();
 
+void validateAllFonts ();
+void validateFont (QString which, int size, bool bold, bool italic);
+void setApplicationFont ();
+
 void initializeStrings();
 
 

@@ -16,7 +16,10 @@
 #include <QDebug>
 #include <QDir>
 #include <QCoreApplication>
+#include <QApplication>
 #include <QSettings>
+#include <QFontDatabase>
+#include <QMenuBar>
 
 #include "SleepLib/common.h"
 
@@ -30,6 +33,9 @@
 #include "git_info.h"
 #include "version.h"
 #include "profiles.h"
+#include "mainwindow.h"
+
+extern MainWindow * mainwin;
 
 // Used by internal settings
 
@@ -191,6 +197,8 @@ QStringList makeBuildInfo (QString relinfo, QString forcedEngine){
         branch = QObject::tr("Branch:") + " " + GIT_BRANCH + ", ";
     }
     buildInfo << branch + (QObject::tr("Revision")) + " " + GIT_REVISION;
+    if (GIT_BRANCH != "master")
+        buildInfo << (QObject::tr("App key:") + " " + getAppName());
     buildInfo << QString("");
     buildInfo << (QObject::tr("Operating system:") + " " + QSysInfo::prettyProductName());
     buildInfo << (QObject::tr("Graphics Engine:") + " " + getOpenGLVersionString());
@@ -281,6 +289,71 @@ QString formatRelief (QString relief)
 bool operator <(const ValueCount &a, const ValueCount &b)
 {
     return a.value < b.value;
+}
+
+static QStringList installedFontFamilies;
+
+// Validate all fonts
+void validateAllFonts () {
+    validateFont("Application", 10, false, false);
+    validateFont("Graph", 10, false, false);
+    validateFont("Title", 12, true, false);
+    validateFont("Big", 35, false, false);
+}
+
+// Validate font from preference settings, and substitute system font if font in preferences cannot be found on this system
+void validateFont (QString which, int size, bool bold, bool italic) {
+
+    // Get list of installed font families, including system font
+    // Do this just once so we don't have to call font functions repeatedly
+    // (This list includes private fonts)
+    QFontDatabase fontdatabase;
+    if (installedFontFamilies.isEmpty()) {
+        installedFontFamilies = fontdatabase.families();
+        qDebug() << "validateFont found" << installedFontFamilies.count() << "installed font families";
+        }
+
+    QString prefPrefix = "Fonts_" + which + "_";
+
+    // start off assuming we don't have a font specified, and system font is desired font
+    QString desiredFont = QFontDatabase::systemFont(QFontDatabase::GeneralFont).family();
+    bool forceFont = true;
+
+    // If a font is specified, make sure it is a valid font on this platform
+    if (p_pref->contains(prefPrefix + "Name")) {
+        // We already have a font, so it becomes desired font (if valid)
+        QString testFont = (*p_pref)[prefPrefix + "Name"].toString();
+        // Is this a good font?
+        if (testFont.length() > 0 && installedFontFamilies.indexOf(testFont) >= 0) {
+            desiredFont = testFont;
+            forceFont = false;
+        }
+    }
+
+#ifdef Q_OS_MAC
+    // Don't allow private font to be set for anything other than Application font (Mac restricts use to UI)
+    if (which != "Application" && fontdatabase.isPrivateFamily(desiredFont)) {
+        desiredFont = "Helvetica";              // We assume "Helvetica" is universally available on Mac
+        forceFont = true;
+    }
+#endif
+
+    // Font not valid or not specified.  Set a default font in its place
+    if (forceFont) {
+        (*p_pref)[prefPrefix + "Name"]   = desiredFont;
+        (*p_pref)[prefPrefix + "Size"]   = size;
+        (*p_pref)[prefPrefix + "Bold"]   = bold;
+        (*p_pref)[prefPrefix + "Italic"] = italic;
+    }
+}
+
+void setApplicationFont () {
+    QFont font = QFont(((*p_pref)["Fonts_Application_Name"]).toString());
+    font.setPointSize(((*p_pref)["Fonts_Application_Size"]).toInt());
+    font.setWeight(((*p_pref)["Fonts_Application_Bold"]).toBool() ? QFont::Bold : QFont::Normal);
+    font.setItalic(((*p_pref)["Fonts_Application_Italic"]).toBool());
+    QApplication::setFont(font);
+    mainwin->menuBar()->setFont(font);
 }
 
 bool removeDir(const QString &path)
