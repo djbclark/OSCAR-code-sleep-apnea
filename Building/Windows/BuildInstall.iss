@@ -70,6 +70,9 @@ VersionInfoProductName={#MyAppName}
 UninstallDisplayName={#MyGroupName}
 UninstallDisplayIcon={app}\{#MyAppExeName}
 
+VersionInfoVersion={#MyMajorVersion}.{#MyMinorVersion}.{#MyRevision}.{#MyBuildNumber}
+VersionInfoProductTextVersion={#MyAppVersion}
+
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "armenian"; MessagesFile: "compiler:Languages\Armenian.isl"
