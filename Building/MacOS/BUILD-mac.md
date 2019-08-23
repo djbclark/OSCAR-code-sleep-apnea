@@ -27,7 +27,7 @@ NOTE: Official builds are currently made with [macOS 10.13 High Sierra] and [Xco
 
     1. Launch Terminal.app and run:
 
-        xcode-select --install
+            xcode-select --install
 
     2. Click "Install".
     3. Click "Agree".
