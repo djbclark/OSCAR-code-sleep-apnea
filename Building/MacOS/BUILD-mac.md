@@ -25,11 +25,12 @@ NOTE: Official builds are currently made with [macOS 10.13 High Sierra] and [Xco
 
 3. Install the command-line developer tools, approx. 0.6GB:
 
-    1. Launch Terminal.app and run
+    1. Launch Terminal.app and run:
+
         xcode-select --install
+
     2. Click "Install".
     3. Click "Agree".
-
 
    This will download and install the latest version of the Command-Line Tools for Xcode for your version of macOS, without requiring a developer account.
 
