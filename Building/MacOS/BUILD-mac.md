@@ -41,6 +41,7 @@ NOTE: Official builds are currently made with [macOS 10.13 High Sierra] and [Xco
     1. Mount qt-opensource-mac-x64-5.12.2.dmg
     2. Launch qt-opensource-mac-x64-5.12.2
     3. Next, Skip, Continue, (optionally change the installation directory), Continue
+        * Qt is entirely self-contained and can be installed anywhere. It defaults to ~/Qt5.12.2.
         * If you only have the command-line tools installed, the Qt installer will complain that "You need to install Xcode and set up Xcode command line tools." Simply click OK.
     4. Expand Qt 5.12.2 and select "macOS", Continue
     5. Select "I have read and agree..." and Continue, Install
@@ -52,9 +53,10 @@ NOTE: Official builds are currently made with [macOS 10.13 High Sierra] and [Xco
 1. Build OSCAR:
 
         git clone https://gitlab.com/pholy/OSCAR-code.git
+        cd OSCAR-code
         mkdir build
         cd build
-        ~/Qt5.12.2/5.12.2/clang_64/bin/qmake ../OSCAR-code/oscar/oscar.pro
+        ~/Qt5.12.2/5.12.2/clang_64/bin/qmake ../oscar/oscar.pro
         make
 
    The application is in OSCAR.app.
@@ -67,7 +69,7 @@ NOTE: Official builds are currently made with [macOS 10.13 High Sierra] and [Xco
 
 ## (Optional) Using Qt Creator
 
-1. Launch Qt Creator where you installed Qt above, by default ~/Qt5.12.2/Qt.
+1. Launch Qt Creator where you installed Qt above, by default ~/Qt5.12.2/Qt Creator.app.
 2. File > Open File or Project... and select ~/OSCAR-code/oscar/oscar.pro (or wherever you cloned it above), then click "Configure Project".
 3. Configure building:
     1. Click on "Projects" in the left panel.
