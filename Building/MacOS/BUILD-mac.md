@@ -25,20 +25,22 @@ NOTE: Official builds are currently made with [macOS 10.13 High Sierra] and [Xco
 
 3. Install the command-line developer tools, approx. 0.6GB:
 
-    1. In Terminal.app run: `xcode-select --install`
+    1. Launch Terminal.app and run
+        xcode-select --install
     2. Click "Install".
     3. Click "Agree".
 
+
    This will download and install the latest version of the Command-Line Tools for Xcode for your version of macOS, without requiring a developer account.
 
-   Alternatively, the command-line tools installer .dmg can be downloaded from the [Xcode] download site, but you will need a (free) developer account and will
-   need to pick the appropriate download for your version of macOS.
+   _Alternatively, the command-line tools installer .dmg can be downloaded from the [Xcode] download site, but you will need a (free) developer account and will
+   need to pick the appropriate download for your version of macOS._
 
 4. Install Qt 5.12.2 (as "build" user, if created), approx. 3GB:
     1. Mount qt-opensource-mac-x64-5.12.2.dmg
     2. Launch qt-opensource-mac-x64-5.12.2
     3. Next, Skip, Continue, (optionally change the installation directory), Continue
-        * If you only have the command-line tools installed, the Qt installer say that "You need to install Xcode and set up Xcode command line tools." Simply click OK.
+        * If you only have the command-line tools installed, the Qt installer will complain that "You need to install Xcode and set up Xcode command line tools." Simply click OK.
     4. Expand Qt 5.12.2 and select "macOS", Continue
     5. Select "I have read and agree..." and Continue, Install
     6. Uncheck "Launch Qt Creator", Done
