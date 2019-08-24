@@ -77,13 +77,14 @@ NOTE: Official builds are currently made with [macOS 10.13 High Sierra] and [Xco
     3. Click to expand "Details" for the **qmake** build step.
     4. Uncheck "Enable Qt Quick Compiler", click "No" to defer recompiling.
 4. Configure packaging for distribution:
+    1. Copy the "Build directory" path from the **Build Settings** panel above. (Default is "/Users/build/OSCAR-code/build-oscar-Desktop_Qt_5_12_2_clang_64bit-Release")
     1. Tools > External > Configure...
     2. Select "Add Tool" from the "Add" drop-down menu near the bottom of the window.
     3. Set the name to "Deploy".
     4. Set the Description to "Creates a distributable .dmg".
     5. Set the Executable to the full path where you installed Qt: "/Users/build/Qt5.12.2/5.12.2/clang_64/bin/macdeployqt".
     6. Set the Arguments to "OSCAR.app -dmg".
-    7. Set the working directory to the full path where you cloned OSCAR-code: "/Users/build/OSCAR-code/build-oscar-Desktop_Qt_5_12_2_clang_64bit-Release". This directory will not exist until the project has been built once.
+    7. Set the working directory to the build directory path copied in step 1.
     8. Click OK.
 5. To compile, select Build > Build Project "oscar". The application is in OSCAR.app.
 6. To create a .dmg, select Tools > External > Deploy. The dmg is at OSCAR.dmg.
