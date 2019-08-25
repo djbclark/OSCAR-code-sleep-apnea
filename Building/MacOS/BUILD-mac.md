@@ -9,7 +9,7 @@
     - Xcode 10.1 is the last version that runs on macOS 10.13
     - Xcode 10.3 is the latest version that runs on macOS 10.14
 
-NOTE: Official builds are currently made with [macOS 10.13 High Sierra] and [Xcode] 10.1.
+NOTE: Official builds are currently made with [macOS 10.14 Mojave] and Command-Line Tools for [Xcode] 10.3.
 
 ## Setup
 1. Install Mac OS X 10.12.6 Sierra (or later) and apply all updates.
