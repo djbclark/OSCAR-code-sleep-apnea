@@ -119,6 +119,9 @@ public:
     quint32 storedCrc;      // header + data CRC stored in file, last 2-4 bytes of chunk
     quint32 calcCrc;        // header + data CRC as calculated when parsing
 
+    //! \brief Calculate a simplistic hash to check whether two chunks are identical.
+    inline quint64 hash(void) const { return ((((quint64) this->calcCrc) << 32) | this->timestamp); }
+    
     //! \brief Parse and return the next chunk from a PRS1 file
     static PRS1DataChunk* ParseNext(class QFile & f);
 
@@ -164,8 +167,14 @@ public:
     //! \brief Parse a flex setting byte from a .000 or .001 containing compliance/summary data
     void ParseFlexSetting(quint8 flex, int prs1mode);
     
-    //! \brief Parse an humidifier setting byte from a .000 or .001 containing compliance/summary data for fileversion 2 machines: F0V234, F5V012, and maybe others
+    //! \brief Parse an humidifier setting byte from a .000 or .001 containing compliance/summary data for fileversion 2 machines: F0V23, F5V012, and maybe others
     void ParseHumidifierSettingV2(int humid, bool supportsHeatedTubing=true);
+
+    //! \brief Parse an humidifier setting byte from a .000 or .001 containing compliance/summary data for F0V4 and F5V012 machines and maybe others
+    void ParseHumidifierSettingF0V4(unsigned char humid1, unsigned char humid2, bool add_setting=false);
+
+    //! \brief Parse an humidifier setting byte from a .000 or .001 containing compliance/summary data for F3V3 machines and maybe others
+    void ParseHumidifierSettingF3V3(unsigned char humid1, unsigned char humid2, bool add_setting=false);
 
     //! \brief Parse humidifier setting bytes from a .000 or .001 containing compliance/summary data for fileversion 3 machines
     void ParseHumidifierSettingV3(unsigned char byte1, unsigned char byte2, bool add_setting=false);
@@ -174,13 +183,16 @@ public:
     void ParseTubingTypeV3(unsigned char type);
 
     //! \brief Figures out which Event Parser to call, based on machine family/version and calls it.
-    bool ParseEvents(CPAPMode mode);
+    bool ParseEvents(void);
 
     //! \brief Parse a single data chunk from a .002 file containing event data for a family 0 CPAP/APAP machine
-    bool ParseEventsF0V234(CPAPMode mode);
+    bool ParseEventsF0V23(void);
+    
+    //! \brief Parse a single data chunk from a .002 file containing event data for a 60 Series family 0 CPAP/APAP 60machine
+    bool ParseEventsF0V4(void);
     
     //! \brief Parse a single data chunk from a .002 file containing event data for a DreamStation family 0 CPAP/APAP machine
-    bool ParseEventsF0V6(CPAPMode mode);
+    bool ParseEventsF0V6(void);
 
     //! \brief Parse a single data chunk from a .002 file containing event data for a family 3 ventilator family version 3 machine
     bool ParseEventsF3V3(void);
@@ -188,8 +200,14 @@ public:
     //! \brief Parse a single data chunk from a .002 file containing event data for a family 3 ventilator family version 6 machine
     bool ParseEventsF3V6(void);
     
-    //! \brief Parse a single data chunk from a .002 file containing event data for a family 5 ASV family version 0-2 machine
-    bool ParseEventsF5V012(void);
+    //! \brief Parse a single data chunk from a .002 file containing event data for a family 5 ASV family version 0 machine
+    bool ParseEventsF5V0(void);
+
+    //! \brief Parse a single data chunk from a .002 file containing event data for a family 5 ASV family version 1 machine
+    bool ParseEventsF5V1(void);
+
+    //! \brief Parse a single data chunk from a .002 file containing event data for a family 5 ASV family version 2 machine
+    bool ParseEventsF5V2(void);
 
     //! \brief Parse a single data chunk from a .002 file containing event data for a family 5 ASV family version 3 machine
     bool ParseEventsF5V3(void);
@@ -211,10 +229,22 @@ protected:
     bool ExtractStoredCrc(int size);
 
     //! \brief Parse a settings slice from a .000 and .001 file
+    bool ParseSettingsF0V23(const unsigned char* data, int size);
+
+    //! \brief Parse a settings slice from a .000 and .001 file
+    bool ParseSettingsF0V4(const unsigned char* data, int size);
+
+    //! \brief Parse a settings slice from a .000 and .001 file
     bool ParseSettingsF0V6(const unsigned char* data, int size);
 
     //! \brief Parse a settings slice from a .000 and .001 file
+    bool ParseSettingsF5V012(const unsigned char* data, int size);
+
+    //! \brief Parse a settings slice from a .000 and .001 file
     bool ParseSettingsF5V3(const unsigned char* data, int size);
+
+    //! \brief Parse a settings slice from a .000 and .001 file
+    bool ParseSettingsF3V3(const unsigned char* data, int size);
 
     //! \brief Parse a settings slice from a .000 and .001 file
     bool ParseSettingsF3V6(const unsigned char* data, int size);
@@ -237,13 +267,12 @@ public:
     PRS1Import(PRS1Loader * l, SessionID s, Machine * m): loader(l), sessionid(s), mach(m) {
         summary = nullptr;
         compliance = nullptr;
-        event = nullptr;
         session = nullptr;
     }
     virtual ~PRS1Import() {
         delete compliance;
         delete summary;
-        delete event;
+        for (auto & e : m_event_chunks.values()) { delete e; }
         for (int i=0;i < waveforms.size(); ++i) { delete waveforms.at(i); }
     }
 
@@ -252,12 +281,12 @@ public:
 
     PRS1DataChunk * compliance;
     PRS1DataChunk * summary;
-    PRS1DataChunk * event;
+    QMap<qint64,PRS1DataChunk *> m_event_chunks;
     QList<PRS1DataChunk *> waveforms;
     QList<PRS1DataChunk *> oximetry;
 
 
-    QString wavefile;
+    QList<QString> m_wavefiles;
     QString oxifile;
 
     //! \brief Imports .000 files for bricks.
@@ -266,8 +295,11 @@ public:
     //! \brief Imports the .001 summary file.
     bool ImportSummary();
 
-    //! \brief Figures out which Event Parser to call, based on machine family/version and calls it.
-    bool ParseEvents();
+    //! \brief Imports the .002 event file(s).
+    bool ImportEvents();
+
+    //! \brief Imports the .005 event file(s).
+    bool ImportWaveforms();
 
     //! \brief Coalesce contiguous .005 or .006 waveform chunks from the file into larger chunks for import.
     QList<PRS1DataChunk *> CoalesceWaveformChunks(QList<PRS1DataChunk *> & allchunks);
@@ -279,25 +311,12 @@ public:
     bool ParseOximetry();
 
 
-    //! \brief Parse a single data chunk from a .002 file containing event data for a standard system one machine
-    bool ParseF0Events();
-    //! \brief Parse a single data chunk from a .002 file containing event data for a standard system one machine (family version 6)
-    bool ParseEventsF0V6();
-    //! \brief Parse a single data chunk from a .002 file containing event data for a AVAPS 1060P machine
-    bool ParseF3Events();
-    //! \brief Parse a single data chunk from a .002 file containing event data for a family 3 ventilator machine (family version 6)
-    bool ParseEventsF3V6();
-    //! \brief Parse a single data chunk from a .002 file containing event data for a family 5 ASV machine (which has a different format)
-    bool ParseF5Events();
-    //! \brief Parse a single data chunk from a .002 file containing event data for a family 5 ASV family version 3 machine (which has a different format again)
-    bool ParseEventsF5V3();
-
-
 protected:
     Session * session;
     PRS1Loader * loader;
     SessionID sessionid;
     Machine * mach;
+    QHash<ChannelID,EventList*> m_importChannels;  // map channel ID to the session's current EventList*
 
     int summary_duration;
 
@@ -307,6 +326,15 @@ protected:
     bool ParseSession(void);
     //! \brief Save parsed session data to the database
     void SaveSessionToDatabase(void);
+
+    //! \brief Import a single data chunk from a .002 file containing event data.
+    bool ImportEventChunk(PRS1DataChunk* event);
+    //! \brief Create all supported channels (except for on-demand ones that only get created if an event appears).
+    bool CreateEventChannels(const PRS1DataChunk* event);
+    //! \brief Get the EventList* for the import channel, creating it if necessary.
+    EventList* GetImportChannel(ChannelID channel);
+    //! \brief Import a single event to a channel, creating the channel if necessary.
+    bool AddEvent(ChannelID channel, qint64 t, float value, float gain);
 };
 
 /*! \class PRS1Loader
