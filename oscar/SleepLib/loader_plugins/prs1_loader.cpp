@@ -1563,12 +1563,12 @@ static const QHash<PRS1ParsedEventType,QVector<ChannelID*>> PRS1ImportChannelMap
     // F0 imports pressure-set events and ignores pressure average events.
     // F5 imports average events and ignores EPAP set events.
     // F3 imports average events and has no set events.
-    { PRS1PressureSetEvent::TYPE,       { &CPAP_Pressure } },
-    { PRS1IPAPSetEvent::TYPE,           { &CPAP_IPAP } },
-    { PRS1EPAPSetEvent::TYPE,           { &CPAP_EPAP, &CPAP_PS } },  // PS is calculated from IPAP and EPAP
-    { PRS1PressureAverageEvent::TYPE,   { /*&CPAP_Pressure*/ } },  // TODO: not currently imported, so don't create the channel
+    { PRS1PressureSetEvent::TYPE,       { &CPAP_PressureSet } },
+    { PRS1IPAPSetEvent::TYPE,           { &CPAP_IPAPSet, &CPAP_PS } },  // PS is calculated from IPAPset and EPAPset when both are supported (F0) TODO: Should this be a separate channel since it's not a 2-minute average?
+    { PRS1EPAPSetEvent::TYPE,           { &CPAP_EPAPSet } },            // EPAPset is supported on F5 without any corresponding IPAPset, so it shouldn't always create a PS channel
+    { PRS1PressureAverageEvent::TYPE,   { &CPAP_Pressure } },
     { PRS1IPAPAverageEvent::TYPE,       { &CPAP_IPAP } },
-    { PRS1EPAPAverageEvent::TYPE,       { &CPAP_EPAP, &CPAP_PS } },  // PS is calculated from IPAP and EPAP
+    { PRS1EPAPAverageEvent::TYPE,       { &CPAP_EPAP, &CPAP_PS } },     // PS is calculated from IPAP and EPAP averages (F3 and F5)
     { PRS1IPAPLowEvent::TYPE,           { &CPAP_IPAPLo } },
     { PRS1IPAPHighEvent::TYPE,          { &CPAP_IPAPHi } },
 
@@ -1579,7 +1579,7 @@ static const QHash<PRS1ParsedEventType,QVector<ChannelID*>> PRS1ImportChannelMap
     { PRS1ApneaAlarmEvent::TYPE,        { /* Not imported */ } },
     { PRS1SnoresAtPressureEvent::TYPE,  { /* Not imported */ } },
     { PRS1AutoPressureSetEvent::TYPE,   { /* Not imported */ } },
-    { PRS1UnknownDurationEvent::TYPE,   { /* Not imported */ } },  // TODO: import as PRS1_0E
+    { PRS1UnknownDurationEvent::TYPE,   { &PRS1_0E } },
 };
 
 //********************************************************************************************
@@ -2627,20 +2627,23 @@ bool PRS1Import::ImportEventChunk(PRS1DataChunk* event)
 {
     EventDataType currentPressure=0;
 
+    const QVector<PRS1ParsedEventType> & supported = GetSupportedEvents(event);
+    
+    // Calculate PS from IPAP/EPAP set events only when both are supported. This includes F0, but excludes
+    // F5, which only reports EPAP set events, but both IPAP/EPAP average, from which PS will be calculated.
+    bool calcPSfromSet = supported.contains(PRS1IPAPSetEvent::TYPE) && supported.contains(PRS1EPAPSetEvent::TYPE);
+    
     // Unintentional leak calculation, see zMaskProfile:calcLeak in calcs.cpp for explanation
     bool calcLeaks = p_profile->cpap->calculateUnintentionalLeaks();
     if (calcLeaks) {
         // Only needed for machines that don't support it directly.
-        calcLeaks = (GetSupportedEvents(event).contains(PRS1LeakEvent::TYPE) == false);
+        calcLeaks = (supported.contains(PRS1LeakEvent::TYPE) == false);
     }
     EventDataType lpm4 = p_profile->cpap->custom4cmH2OLeaks();
     EventDataType lpm20 = p_profile->cpap->custom20cmH2OLeaks();
     EventDataType lpm = lpm20 - lpm4;
     EventDataType ppm = lpm / 16.0;
 
-    // TODO: For F3V3 this will need to be able to iterate over a list of event chunks,
-    // each of which has a starting timestamp and events at offsets from that timestamp,
-    // all of which should be coalesced into a single imported session.
     qint64 duration;
     qint64 t = qint64(event->timestamp) * 1000L;
     session->updateFirst(t);
@@ -2648,9 +2651,50 @@ bool PRS1Import::ImportEventChunk(PRS1DataChunk* event)
     bool ok;
     ok = event->ParseEvents();
     
+    qint64 statIntervalStart = t, statIntervalEnd = t;
     for (int i=0; i < event->m_parsedData.count(); i++) {
         PRS1ParsedEvent* e = event->m_parsedData.at(i);
         t = qint64(event->timestamp + e->m_start) * 1000L;
+
+        // Update statistical timestamps, which are reported at the end of a (generally)
+        // 2-minute interval, so that their timestamps reflect their start time as OSCAR
+        // excpects. When a session or slice ends, there will be a shorter interval, from
+        // the previous statistics to the end of the session/slice.
+        // TODO: Handle multiple slices correctly, updating the interval start when a slice starts (and starting a new eventlist)
+        // TODO: Handle the end of a slice/session correctly, adding a duplicate "end" event with the original timestamp.
+        //       (This will require some slight refactoring of the main switch statement below, including moving some
+        //        of the above variables into the PRS1Import object so that they can be shared between events, and
+        //        tracking the most recent stat event for each channel and emitting a duplicate when we reach the end
+        //        of the session/slice.)
+        switch (e->m_type) {
+            case PRS1PressureAverageEvent::TYPE:
+            case PRS1IPAPAverageEvent::TYPE:
+            case PRS1IPAPLowEvent::TYPE:
+            case PRS1IPAPHighEvent::TYPE:
+            case PRS1EPAPAverageEvent::TYPE:
+            case PRS1TotalLeakEvent::TYPE:
+            case PRS1LeakEvent::TYPE:
+            case PRS1RespiratoryRateEvent::TYPE:
+            case PRS1PatientTriggeredBreathsEvent::TYPE:
+            case PRS1MinuteVentilationEvent::TYPE:
+            case PRS1TidalVolumeEvent::TYPE:
+            case PRS1FlowRateEvent::TYPE:
+            case PRS1Test1Event::TYPE:
+            case PRS1Test2Event::TYPE:
+            case PRS1SnoreEvent::TYPE:
+                if (t != statIntervalEnd) {
+                    // When we encounter the first event of a series of stats (as identified by a new timestamp),
+                    // mark the interval start as the end of the previous interval.
+                    statIntervalStart = statIntervalEnd;
+                    statIntervalEnd = t;
+                }
+                // Set this event's timestamp as the start of the interval, since that what OSCAR assumes.
+                t = statIntervalStart;
+                // TODO: ideally we would also set the duration of the event, but OSCAR doesn't have any notion of that yet.
+            default:
+                // Leave normal events alone
+                break;
+        }
 
         QVector<ChannelID*> channels = PRS1ImportChannelMap[e->m_type];
         ChannelID channel = NoChannel, PS, VS2, LEAK;
@@ -2659,32 +2703,22 @@ bool PRS1Import::ImportEventChunk(PRS1DataChunk* event)
         }
         
         switch (e->m_type) {
-            case PRS1UnknownDurationEvent::TYPE:  // TODO: We should import and graph this as PRS1_0E
-                break;  // not imported or displayed
-            case PRS1PressureSetEvent::TYPE:
-                AddEvent(channel, t, e->m_value, e->m_gain);
-                currentPressure = e->m_value;
-                break;
+            case PRS1PressureSetEvent::TYPE:  // currentPressure is used to calculate unintentional leak, not just PS
             case PRS1IPAPSetEvent::TYPE:
+            case PRS1IPAPAverageEvent::TYPE:
                 AddEvent(channel, t, e->m_value, e->m_gain);
                 currentPressure = e->m_value;
                 break;
             case PRS1EPAPSetEvent::TYPE:
-                if (event->family == 5) break;  // TODO: Once there are separate average and setting channels, this special-case can be removed.
-                PS = *channels.at(1);
                 AddEvent(channel, t, e->m_value, e->m_gain);
-                AddEvent(PS, t, currentPressure - e->m_value, e->m_gain);  // Pressure Support
-                break;
-            case PRS1PressureAverageEvent::TYPE:
-                // TODO, we need OSCAR channels for average stats
-                break;
-            case PRS1IPAPAverageEvent::TYPE:
-                AddEvent(channel, t, e->m_value, e->m_gain);  // TODO: This belongs in an average channel rather than setting channel.
-                currentPressure = e->m_value;
+                if (calcPSfromSet) {
+                    PS = *(PRS1ImportChannelMap[PRS1IPAPSetEvent::TYPE].at(1));
+                    AddEvent(PS, t, currentPressure - e->m_value, e->m_gain);  // Pressure Support
+                }
                 break;
             case PRS1EPAPAverageEvent::TYPE:
                 PS = *channels.at(1);
-                AddEvent(channel, t, e->m_value, e->m_gain);  // TODO: This belongs in an average channel rather than setting channel.
+                AddEvent(channel, t, e->m_value, e->m_gain);
                 AddEvent(PS, t, currentPressure - e->m_value, e->m_gain);  // Pressure Support
                 break;
 
@@ -2706,6 +2740,7 @@ bool PRS1Import::ImportEventChunk(PRS1DataChunk* event)
 
             case PRS1PeriodicBreathingEvent::TYPE:
             case PRS1LargeLeakEvent::TYPE:
+            case PRS1UnknownDurationEvent::TYPE:
                 // TODO: The graphs silently treat the timestamp of a span as an end time rather than start (see gFlagsLine::paint).
                 // Decide whether to preserve that behavior or change it universally and update either this code or comment.
                 duration = e->m_duration * 1000L;
@@ -3354,6 +3389,7 @@ static const QVector<PRS1ParsedEventType> ParsedEventsF0V4 = {
     PRS1LargeLeakEvent::TYPE,
     PRS1TotalLeakEvent::TYPE,
     PRS1SnoreEvent::TYPE,
+    PRS1PressureAverageEvent::TYPE,
     PRS1SnoresAtPressureEvent::TYPE,
 };
 
@@ -7867,58 +7903,14 @@ void PRS1Loader::initChannels()
     QString unknownname=QObject::tr("PRS1_%1");
     QString unknownshort=QObject::tr("PRS1_%1");
 
-    channel.add(GRP_CPAP, new Channel(PRS1_00 = 0x1150, UNKNOWN, MT_CPAP,    SESSION,
-        "PRS1_00",
-        QString(unknownname).arg(0,2,16,QChar('0')),
-        QString(unknowndesc).arg(0,2,16,QChar('0')),
-        QString(unknownshort).arg(0,2,16,QChar('0')),
-        STR_UNIT_Unknown,
-        DEFAULT,    QColor("black")));
-
-    channel.add(GRP_CPAP, new Channel(PRS1_01 = 0x1151, UNKNOWN,  MT_CPAP,   SESSION,
-        "PRS1_01",
-        QString(unknownname).arg(1,2,16,QChar('0')),
-        QString(unknowndesc).arg(1,2,16,QChar('0')),
-        QString(unknownshort).arg(1,2,16,QChar('0')),
-        STR_UNIT_Unknown,
-        DEFAULT,    QColor("black")));
-
-    channel.add(GRP_CPAP, new Channel(PRS1_08 = 0x1152, UNKNOWN, MT_CPAP,    SESSION,
-        "PRS1_08",
-        QString(unknownname).arg(8,2,16,QChar('0')),
-        QString(unknowndesc).arg(8,2,16,QChar('0')),
-        QString(unknownshort).arg(8,2,16,QChar('0')),
-        STR_UNIT_Unknown,
-        DEFAULT,    QColor("black")));
-
-    channel.add(GRP_CPAP, new Channel(PRS1_0A = 0x1154, UNKNOWN, MT_CPAP,    SESSION,
-        "PRS1_0A",
-        QString(unknownname).arg(0xa,2,16,QChar('0')),
-        QString(unknowndesc).arg(0xa,2,16,QChar('0')),
-        QString(unknownshort).arg(0xa,2,16,QChar('0')),
-        STR_UNIT_Unknown,
-        DEFAULT,    QColor("black")));
-    channel.add(GRP_CPAP, new Channel(PRS1_0B = 0x1155, UNKNOWN,  MT_CPAP,   SESSION,
-        "PRS1_0B",
-        QString(unknownname).arg(0xb,2,16,QChar('0')),
-        QString(unknowndesc).arg(0xb,2,16,QChar('0')),
-        QString(unknownshort).arg(0xb,2,16,QChar('0')),
-        STR_UNIT_Unknown,
-        DEFAULT,    QColor("black")));
-    channel.add(GRP_CPAP, new Channel(PRS1_0C = 0x1156, UNKNOWN,  MT_CPAP,   SESSION,
-        "PRS1_0C",
-        QString(unknownname).arg(0xc,2,16,QChar('0')),
-        QString(unknowndesc).arg(0xc,2,16,QChar('0')),
-        QString(unknownshort).arg(0xc,2,16,QChar('0')),
-        STR_UNIT_Unknown,
-        DEFAULT,    QColor("black")));
-    channel.add(GRP_CPAP, new Channel(PRS1_0E = 0x1157, UNKNOWN, MT_CPAP,    SESSION,
+    channel.add(GRP_CPAP, new Channel(PRS1_0E = 0x1157, SPAN, MT_CPAP,    SESSION,
         "PRS1_0E",
-        QString(unknownname).arg(0xe,2,16,QChar('0')),
+        "??",  // QString(unknownname).arg(0xe,2,16,QChar('0')),
         QString(unknowndesc).arg(0xe,2,16,QChar('0')),
-        QString(unknownshort).arg(0xe,2,16,QChar('0')),
-        STR_UNIT_Unknown,
-        DEFAULT,    QColor("black")));
+        "??",
+        STR_UNIT_Percentage,
+        DEFAULT,    QColor("#ffe8f0")));
+    qDebug() << channel[PRS1_0E].defaultColor();
     channel.add(GRP_CPAP, new Channel(PRS1_BND = 0x1159, SPAN,  MT_CPAP,   SESSION,
         "PRS1_BND",
         QObject::tr("Breathing Not Detected"),
@@ -7926,16 +7918,6 @@ void PRS1Loader::initChannels()
         QObject::tr("BND"),
         STR_UNIT_Unknown,
         DEFAULT,    QColor("light purple")));
-
-    channel.add(GRP_CPAP, new Channel(PRS1_15 = 0x115A, UNKNOWN,  MT_CPAP,   SESSION,
-        "PRS1_15",
-        QString(unknownname).arg(0x15,2,16,QChar('0')),
-        QString(unknowndesc).arg(0x15,2,16,QChar('0')),
-        QString(unknownshort).arg(0x15,2,16,QChar('0')),
-        STR_UNIT_Unknown,
-        DEFAULT,    QColor("black")));
-
-
     channel.add(GRP_CPAP, new Channel(PRS1_TimedBreath = 0x1180, MINOR_FLAG, MT_CPAP,    SESSION,
         "PRS1TimedBreath",
         QObject::tr("Timed Breath"),
