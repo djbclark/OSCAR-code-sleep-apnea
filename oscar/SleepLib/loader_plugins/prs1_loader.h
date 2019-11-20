@@ -268,6 +268,7 @@ public:
         summary = nullptr;
         compliance = nullptr;
         session = nullptr;
+        m_currentSliceInitialized = false;
     }
     virtual ~PRS1Import() {
         delete compliance;
@@ -327,14 +328,35 @@ protected:
     //! \brief Save parsed session data to the database
     void SaveSessionToDatabase(void);
 
+    //! \brief Cache a single slice from a summary or compliance chunk.
+    void AddSlice(qint64 chunk_start, PRS1ParsedEvent* e);
+    QVector<SessionSlice> m_slices;
+
+    //! \brief Import a single event from a data chunk.
+    void ImportEvent(qint64 t, PRS1ParsedEvent* event);
+    // State that needs to persist between individual events:
+    EventDataType m_currentPressure;
+    bool m_calcPSfromSet;
+    bool m_calcLeaks;
+    EventDataType m_lpm4, m_ppm;
+
+    //! \brief Advance the current mask-on slice if needed and update import data structures accordingly.
+    bool UpdateCurrentSlice(PRS1DataChunk* chunk, qint64 t);
+    bool m_currentSliceInitialized;
+    QVector<SessionSlice>::const_iterator m_currentSlice;
+    qint64 m_statIntervalStart, m_statIntervalEnd;
+
+    //! \brief Identify statistical events that are reported at the end of an interval.
+    bool IsIntervalEvent(PRS1ParsedEvent* e);
+
     //! \brief Import a single data chunk from a .002 file containing event data.
     bool ImportEventChunk(PRS1DataChunk* event);
     //! \brief Create all supported channels (except for on-demand ones that only get created if an event appears).
-    bool CreateEventChannels(const PRS1DataChunk* event);
+    void CreateEventChannels(const PRS1DataChunk* event);
     //! \brief Get the EventList* for the import channel, creating it if necessary.
     EventList* GetImportChannel(ChannelID channel);
     //! \brief Import a single event to a channel, creating the channel if necessary.
-    bool AddEvent(ChannelID channel, qint64 t, float value, float gain);
+    void AddEvent(ChannelID channel, qint64 t, float value, float gain);
 };
 
 /*! \class PRS1Loader
@@ -436,8 +458,6 @@ class PRS1Loader : public CPAPLoader
 
     //! \brief PRS1 Data files can store multiple sessions, so store them in this list for later processing.
     QHash<SessionID, Session *> new_sessions;
-
-    qint32 summary_duration;
 };
 
 

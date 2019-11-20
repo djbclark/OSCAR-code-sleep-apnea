@@ -258,6 +258,7 @@ static const PRS1TestedModel s_PRS1TestedModels[] = {
     { "1061T",    3, 3, "BiPAP S/T 30 (System One 60 Series)" },
     { "1160P",    3, 3, "BiPAP AVAPS 30 (System One 60 Series)" },
     { "1030X110", 3, 6, "DreamStation BiPAP S/T 30" },
+    { "1030X150", 3, 6, "DreamStation BiPAP S/T 30 with AAM" },
     { "1130X110", 3, 6, "DreamStation BiPAP AVAPS 30" },
     { "1131X150", 3, 6, "DreamStation BiPAP AVAPS 30 AE" },
     
@@ -1090,6 +1091,9 @@ enum PRS1ParsedEventType
     EV_PRS1_LL,
     EV_PRS1_UNK_DURATION,  // unknown duration event, rename once we figure it out
     EV_PRS1_HY,
+    EV_PRS1_OA_COUNT,     // F3V3 only
+    EV_PRS1_CA_COUNT,     // F3V3 only
+    EV_PRS1_HY_COUNT,     // F3V3 only
     EV_PRS1_TOTLEAK,
     EV_PRS1_LEAK,  // unintentional leak
     EV_PRS1_AUTO_PRESSURE_SET,
@@ -1106,10 +1110,9 @@ enum PRS1ParsedEventType
     EV_PRS1_MV,
     EV_PRS1_TV,
     EV_PRS1_SNORE,
-    EV_PRS1_VS,  // F0: Is this different from SNORE?
+    EV_PRS1_VS,
     EV_PRS1_PP,
     EV_PRS1_RERA,
-    EV_PRS1_NRI,
     EV_PRS1_FLOWRATE,
     EV_PRS1_TEST1,
     EV_PRS1_TEST2,
@@ -1224,7 +1227,6 @@ public:
         return out;
     }
 
-protected:
     static const PRS1ParsedEventUnit UNIT = PRS1_UNIT_S;
     
     PRS1ParsedDurationEvent(PRS1ParsedEventType type, int start, int duration) : PRS1ParsedEvent(type, start) { m_duration = duration; }
@@ -1493,10 +1495,12 @@ PRS1_VALUE_EVENT(PRS1SnoreEvent, EV_PRS1_SNORE);
 PRS1_VALUE_EVENT(PRS1VibratorySnoreEvent, EV_PRS1_VS);
 PRS1_VALUE_EVENT(PRS1PressurePulseEvent, EV_PRS1_PP);
 PRS1_VALUE_EVENT(PRS1RERAEvent, EV_PRS1_RERA);  // TODO: should this really be a duration event?
-//PRS1_VALUE_EVENT(PRS1NonRespondingEvent, EV_PRS1_NRI);  // TODO: is this a single event or an index/hour?
 PRS1_VALUE_EVENT(PRS1FlowRateEvent, EV_PRS1_FLOWRATE);  // TODO: is this a single event or an index/hour?
 PRS1_VALUE_EVENT(PRS1Test1Event, EV_PRS1_TEST1);
 PRS1_VALUE_EVENT(PRS1Test2Event, EV_PRS1_TEST2);
+PRS1_VALUE_EVENT(PRS1HypopneaCount, EV_PRS1_HY_COUNT);  // F3V3 only
+PRS1_VALUE_EVENT(PRS1ClearAirwayCount, EV_PRS1_CA_COUNT);  // F3V3 only
+PRS1_VALUE_EVENT(PRS1ObstructiveApneaCount, EV_PRS1_OA_COUNT);  // F3V3 only
 
 PRS1_ALARM_EVENT(PRS1DisconnectAlarmEvent, EV_PRS1_DISCONNECT_ALARM);
 PRS1_ALARM_EVENT(PRS1ApneaAlarmEvent, EV_PRS1_APNEA_ALARM);
@@ -1531,6 +1535,16 @@ static const QVector<PRS1ParsedEventType> PRS1OnDemandChannels =
     PRS1PressureSetEvent::TYPE,
     PRS1IPAPSetEvent::TYPE,
     PRS1EPAPSetEvent::TYPE,
+};
+
+// The set of "non-slice" channels are independent of mask-on slices, i.e. they
+// are continuously reported and charted regardless of whether the mask is on.
+static const QSet<PRS1ParsedEventType> PRS1NonSliceChannels =
+{
+    PRS1PressureSetEvent::TYPE,
+    PRS1IPAPSetEvent::TYPE,
+    PRS1EPAPSetEvent::TYPE,
+    PRS1SnoresAtPressureEvent::TYPE,
 };
 
 // The channel ID (referenced by pointer because their values aren't initialized
@@ -1580,6 +1594,10 @@ static const QHash<PRS1ParsedEventType,QVector<ChannelID*>> PRS1ImportChannelMap
     { PRS1SnoresAtPressureEvent::TYPE,  { /* Not imported */ } },
     { PRS1AutoPressureSetEvent::TYPE,   { /* Not imported */ } },
     { PRS1UnknownDurationEvent::TYPE,   { &PRS1_0E } },
+    
+    { PRS1HypopneaCount::TYPE,          { &CPAP_Hypopnea } },     // F3V3 only, generates individual events on import
+    { PRS1ObstructiveApneaCount::TYPE,  { &CPAP_Obstructive } },  // F3V3 only, generates individual events on import
+    { PRS1ClearAirwayCount::TYPE,       { &CPAP_ClearAirway } },  // F3V3 only, generates individual events on import
 };
 
 //********************************************************************************************
@@ -1604,6 +1622,9 @@ static QString parsedEventTypeName(PRS1ParsedEventType t)
         ENUMSTRING(EV_PRS1_LL);
         ENUMSTRING(EV_PRS1_UNK_DURATION);
         ENUMSTRING(EV_PRS1_HY);
+        ENUMSTRING(EV_PRS1_OA_COUNT);
+        ENUMSTRING(EV_PRS1_CA_COUNT);
+        ENUMSTRING(EV_PRS1_HY_COUNT);
         ENUMSTRING(EV_PRS1_TOTLEAK);
         ENUMSTRING(EV_PRS1_LEAK);
         ENUMSTRING(EV_PRS1_AUTO_PRESSURE_SET);
@@ -1623,7 +1644,6 @@ static QString parsedEventTypeName(PRS1ParsedEventType t)
         ENUMSTRING(EV_PRS1_VS);
         ENUMSTRING(EV_PRS1_PP);
         ENUMSTRING(EV_PRS1_RERA);
-        ENUMSTRING(EV_PRS1_NRI);
         ENUMSTRING(EV_PRS1_FLOWRATE);
         ENUMSTRING(EV_PRS1_TEST1);
         ENUMSTRING(EV_PRS1_TEST2);
@@ -2564,22 +2584,39 @@ bool PRS1DataChunk::ParseEventsF5V2(void)
 }
 
 
-bool PRS1Import::CreateEventChannels(const PRS1DataChunk* event)
+void PRS1Import::CreateEventChannels(const PRS1DataChunk* chunk)
 {
-    m_importChannels.clear();
+    const QVector<PRS1ParsedEventType> & supported = GetSupportedEvents(chunk);
+
+    // Generate the list of channels created by non-slice events for this machine.
+    // We can't just use the full list of non-slice events, since on some machines
+    // PS is generated by slice events (EPAP/IPAP average).
+    // TODO: convert supported to QSet and clean this up.
+    QSet<PRS1ParsedEventType> supportedNonSliceEvents = QSet<PRS1ParsedEventType>::fromList(QList<PRS1ParsedEventType>::fromVector(supported));
+    supportedNonSliceEvents.intersect(PRS1NonSliceChannels);
+    QSet<ChannelID> supportedNonSliceChannels;
+    for (auto & e : supportedNonSliceEvents) {
+        for (auto & pChannelID : PRS1ImportChannelMap[e]) {
+            supportedNonSliceChannels += *pChannelID;
+        }
+    }
+
+    // Clear channels to prepare for a new slice, except for channels created by
+    // non-slice events.
+    for (auto & c : m_importChannels.keys()) {
+        if (supportedNonSliceChannels.contains(c) == false) {
+            m_importChannels.remove(c);
+        }
+    }
     
     // Create all supported channels (except for on-demand ones that only get created if an event appears)
-    const QVector<PRS1ParsedEventType> & supported = GetSupportedEvents(event);
     for (auto & e : supported) {
         if (!PRS1OnDemandChannels.contains(e)) {
             for (auto & pChannelID : PRS1ImportChannelMap[e]) {
-                if (!GetImportChannel(*pChannelID)) {
-                    return false;
-                }
+                GetImportChannel(*pChannelID);
             }
         }
     }
-    return true;
 }
 
 
@@ -2588,24 +2625,17 @@ EventList* PRS1Import::GetImportChannel(ChannelID channel)
     EventList* C = m_importChannels[channel];
     if (C == nullptr) {
         C = session->AddEventList(channel, EVL_Event);
-        // TODO: figure out why this can fail and prevent it
-        if (C == nullptr) {
-            qWarning() << "Unable to create event list for channel" << channel;
-        } else {
-            m_importChannels[channel] = C;
-        }
+        Q_ASSERT(C);  // Once upon a time AddEventList could return nullptr, but not any more.
+        m_importChannels[channel] = C;
     }
     return C;
 }
 
 
-bool PRS1Import::AddEvent(ChannelID channel, qint64 t, float value, float gain)
+void PRS1Import::AddEvent(ChannelID channel, qint64 t, float value, float gain)
 {
     EventList* C = GetImportChannel(channel);
-    if (C == nullptr) {
-        // Warnings are handled by GetImportChannel.
-        return false;
-    }
+    Q_ASSERT(C);
     if (C->count() == 0) {
         // Initialize the gain (here, since required channels are created with default gain).
         C->setGain(gain);
@@ -2618,182 +2648,215 @@ bool PRS1Import::AddEvent(ChannelID channel, qint64 t, float value, float gain)
     
     // Add the event
     C->AddEvent(t, value, gain);
-    // TODO: can this ever fail?
-    return true;
+}
+
+
+bool PRS1Import::UpdateCurrentSlice(PRS1DataChunk* chunk, qint64 t)
+{
+    bool updated = false;
+    
+    if (!m_currentSliceInitialized) {
+        m_currentSliceInitialized = true;
+        m_currentSlice = m_slices.constBegin();
+        updated = true;
+    }
+
+    // Update the slice iterator to point to the mask-on slice encompassing time t.
+    while ((*m_currentSlice).status != MaskOn || t > (*m_currentSlice).end) {
+        m_currentSlice++;
+        updated = true;
+        if (m_currentSlice == m_slices.constEnd()) {
+            qWarning() << sessionid << "Events after last mask-on slice?";
+            m_currentSlice--;
+            break;
+        }
+    }
+    
+    if (updated && (*m_currentSlice).status == MaskOn) {
+        // Set the interval start/end times based on the new slice's start time.
+        m_statIntervalStart = (*m_currentSlice).start;
+        m_statIntervalEnd = m_statIntervalStart;
+
+        // Create a new eventlist for this new slice, to allow for a gap in the data between slices.
+        CreateEventChannels(chunk);
+    }
+    
+    return updated;
+}
+
+
+bool PRS1Import::IsIntervalEvent(PRS1ParsedEvent* e)
+{
+    bool intervalEvent = false;
+
+    // Statistical timestamps are reported at the end of a (generally) 2-minute
+    // interval, rather than the start time that OSCAR expects for its imported
+    // events.  (When a session or slice ends, there will be a shorter interval,
+    // the previous statistics to the end of the session/slice.)
+    switch (e->m_type) {
+        case PRS1PressureAverageEvent::TYPE:
+        case PRS1IPAPAverageEvent::TYPE:
+        case PRS1IPAPLowEvent::TYPE:
+        case PRS1IPAPHighEvent::TYPE:
+        case PRS1EPAPAverageEvent::TYPE:
+        case PRS1TotalLeakEvent::TYPE:
+        case PRS1LeakEvent::TYPE:
+        case PRS1RespiratoryRateEvent::TYPE:
+        case PRS1PatientTriggeredBreathsEvent::TYPE:
+        case PRS1MinuteVentilationEvent::TYPE:
+        case PRS1TidalVolumeEvent::TYPE:
+        case PRS1FlowRateEvent::TYPE:
+        case PRS1Test1Event::TYPE:
+        case PRS1Test2Event::TYPE:
+        case PRS1SnoreEvent::TYPE:
+        case PRS1HypopneaCount::TYPE:
+        case PRS1ClearAirwayCount::TYPE:
+        case PRS1ObstructiveApneaCount::TYPE:
+            intervalEvent = true;
+            break;
+        default:
+            break;
+    }
+    
+    return intervalEvent;
 }
 
 
 bool PRS1Import::ImportEventChunk(PRS1DataChunk* event)
 {
-    EventDataType currentPressure=0;
+    m_currentPressure=0;
 
     const QVector<PRS1ParsedEventType> & supported = GetSupportedEvents(event);
     
     // Calculate PS from IPAP/EPAP set events only when both are supported. This includes F0, but excludes
     // F5, which only reports EPAP set events, but both IPAP/EPAP average, from which PS will be calculated.
-    bool calcPSfromSet = supported.contains(PRS1IPAPSetEvent::TYPE) && supported.contains(PRS1EPAPSetEvent::TYPE);
+    m_calcPSfromSet = supported.contains(PRS1IPAPSetEvent::TYPE) && supported.contains(PRS1EPAPSetEvent::TYPE);
     
     // Unintentional leak calculation, see zMaskProfile:calcLeak in calcs.cpp for explanation
-    bool calcLeaks = p_profile->cpap->calculateUnintentionalLeaks();
-    if (calcLeaks) {
+    m_calcLeaks = p_profile->cpap->calculateUnintentionalLeaks();
+    if (m_calcLeaks) {
         // Only needed for machines that don't support it directly.
-        calcLeaks = (supported.contains(PRS1LeakEvent::TYPE) == false);
+        m_calcLeaks = (supported.contains(PRS1LeakEvent::TYPE) == false);
     }
-    EventDataType lpm4 = p_profile->cpap->custom4cmH2OLeaks();
+    m_lpm4 = p_profile->cpap->custom4cmH2OLeaks();
     EventDataType lpm20 = p_profile->cpap->custom20cmH2OLeaks();
-    EventDataType lpm = lpm20 - lpm4;
-    EventDataType ppm = lpm / 16.0;
+    EventDataType lpm = lpm20 - m_lpm4;
+    m_ppm = lpm / 16.0;
 
-    qint64 duration;
     qint64 t = qint64(event->timestamp) * 1000L;
-    session->updateFirst(t);
+    if (session->first() == 0) {
+        qWarning() << sessionid << "Start time not set by summary?";
+    } else if (t < session->first()) {
+        qWarning() << sessionid << "Events start before summary?";
+    }
 
     bool ok;
     ok = event->ParseEvents();
     
-    qint64 statIntervalStart = t, statIntervalEnd = t;
+    // Set up the (possibly initial) slice based on the chunk's starting timestamp.
+    UpdateCurrentSlice(event, t);
+
     for (int i=0; i < event->m_parsedData.count(); i++) {
         PRS1ParsedEvent* e = event->m_parsedData.at(i);
         t = qint64(event->timestamp + e->m_start) * 1000L;
 
-        // Update statistical timestamps, which are reported at the end of a (generally)
-        // 2-minute interval, so that their timestamps reflect their start time as OSCAR
-        // excpects. When a session or slice ends, there will be a shorter interval, from
-        // the previous statistics to the end of the session/slice.
-        // TODO: Handle multiple slices correctly, updating the interval start when a slice starts (and starting a new eventlist)
-        // TODO: Handle the end of a slice/session correctly, adding a duplicate "end" event with the original timestamp.
-        //       (This will require some slight refactoring of the main switch statement below, including moving some
-        //        of the above variables into the PRS1Import object so that they can be shared between events, and
-        //        tracking the most recent stat event for each channel and emitting a duplicate when we reach the end
-        //        of the session/slice.)
-        switch (e->m_type) {
-            case PRS1PressureAverageEvent::TYPE:
-            case PRS1IPAPAverageEvent::TYPE:
-            case PRS1IPAPLowEvent::TYPE:
-            case PRS1IPAPHighEvent::TYPE:
-            case PRS1EPAPAverageEvent::TYPE:
-            case PRS1TotalLeakEvent::TYPE:
-            case PRS1LeakEvent::TYPE:
-            case PRS1RespiratoryRateEvent::TYPE:
-            case PRS1PatientTriggeredBreathsEvent::TYPE:
-            case PRS1MinuteVentilationEvent::TYPE:
-            case PRS1TidalVolumeEvent::TYPE:
-            case PRS1FlowRateEvent::TYPE:
-            case PRS1Test1Event::TYPE:
-            case PRS1Test2Event::TYPE:
-            case PRS1SnoreEvent::TYPE:
-                if (t != statIntervalEnd) {
-                    // When we encounter the first event of a series of stats (as identified by a new timestamp),
-                    // mark the interval start as the end of the previous interval.
-                    statIntervalStart = statIntervalEnd;
-                    statIntervalEnd = t;
-                }
-                // Set this event's timestamp as the start of the interval, since that what OSCAR assumes.
-                t = statIntervalStart;
-                // TODO: ideally we would also set the duration of the event, but OSCAR doesn't have any notion of that yet.
-            default:
-                // Leave normal events alone
-                break;
-        }
-
-        QVector<ChannelID*> channels = PRS1ImportChannelMap[e->m_type];
-        ChannelID channel = NoChannel, PS, VS2, LEAK;
-        if (channels.count() > 0) {
-            channel = *channels.at(0);
+        // Skip unknown events with no timestamp
+        if (e->m_type == PRS1UnknownDataEvent::TYPE) {
+            continue;
         }
         
+        // Skip zero-length PB or LL (or unknown duration 0E) events
+        if ((e->m_type == PRS1PeriodicBreathingEvent::TYPE || e->m_type == PRS1LargeLeakEvent::TYPE || e->m_type == PRS1UnknownDurationEvent::TYPE) &&
+            (e->m_duration == 0)) {
+            // LL occasionally appear about a minute before a new mask-on slice
+            // begins, when the previous mask-on slice ended with a large leak.
+            // This probably indicates the end of LL and beginning
+            // of breath detection, but we don't get any real data until mask-on.
+            //
+            // It has also happened once in a similar scenario for PB and 0E, even when
+            // the two mask-on slices are in different sessions!
+            continue;
+        }
+        
+        bool intervalEvent = IsIntervalEvent(e);
+        qint64 interval_end_t = 0;
+        if (intervalEvent) {
+            // Calculate the start timetamp for the interval described by this event.
+            if (t != m_statIntervalEnd) {
+                // When we encounter the first event of a series of stats (as identified by a new timestamp),
+                // check whether the previous interval ended within the current slice. (Check the timestamp + 1
+                // since intervals can't start at the end of a slice, in contrast to regular (instantaneous)
+                // events below.)
+                if (!UpdateCurrentSlice(event, m_statIntervalEnd + 1)) {
+                    // If so, simply advance the interval to start where the previous one ended.
+                    m_statIntervalStart = m_statIntervalEnd;
+                    // (otherwise UpdateCurrentSlice will have set it to the slice start time.)
+                }
+                m_statIntervalEnd = t;
+            }
+            // Clamp this interval's end time to the end of the slice.
+            interval_end_t = min(t, (*m_currentSlice).end);
+            // Set this event's timestamp as the start of the interval, since that what OSCAR assumes.
+            t = m_statIntervalStart;
+            // TODO: ideally we would also set the duration of the event, but OSCAR doesn't have any notion of that yet.
+        } else {
+            // Advance the slice if needed for the regular event's timestamp.
+            if (!PRS1NonSliceChannels.contains(e->m_type)) {
+                UpdateCurrentSlice(event, t);
+            }
+        }
+
+        // Sanity check: warn if a (non-slice) event is earlier than the current mask-on slice
+        if (t < (*m_currentSlice).start && (*m_currentSlice).status == MaskOn) {
+            if (!PRS1NonSliceChannels.contains(e->m_type)) {
+                // LL and PRS1_0E at the beginning of a mask-on session sometimes start 1 second early,
+                // so suppress that warning.
+                if ((*m_currentSlice).start - t > 1000 || (e->m_type != PRS1LargeLeakEvent::TYPE && e->m_type != PRS1UnknownDurationEvent::TYPE)) {
+                    qWarning() << sessionid << "Event" << e->m_type << "before mask-on slice:" << ts(t);
+                }
+            }
+        }
+
         switch (e->m_type) {
-            case PRS1PressureSetEvent::TYPE:  // currentPressure is used to calculate unintentional leak, not just PS
-            case PRS1IPAPSetEvent::TYPE:
-            case PRS1IPAPAverageEvent::TYPE:
-                AddEvent(channel, t, e->m_value, e->m_gain);
-                currentPressure = e->m_value;
-                break;
-            case PRS1EPAPSetEvent::TYPE:
-                AddEvent(channel, t, e->m_value, e->m_gain);
-                if (calcPSfromSet) {
-                    PS = *(PRS1ImportChannelMap[PRS1IPAPSetEvent::TYPE].at(1));
-                    AddEvent(PS, t, currentPressure - e->m_value, e->m_gain);  // Pressure Support
-                }
-                break;
-            case PRS1EPAPAverageEvent::TYPE:
-                PS = *channels.at(1);
-                AddEvent(channel, t, e->m_value, e->m_gain);
-                AddEvent(PS, t, currentPressure - e->m_value, e->m_gain);  // Pressure Support
-                break;
+            // F3V3 doesn't have individual HY/CA/OA events, only counts every 2 minutes, where
+            // nonzero counts show up as overview flags. Currently OSCAR doesn't have a way to
+            // chart those numeric statistics, so we generate events based on the count.
+            //
+            // TODO: This (and VS2) would probably be better handled as numeric charts only,
+            // along with enhancing overview flags to be drawn when channels have nonzero values,
+            // instead of the fictitious "events" that are currently generated.
+            case PRS1HypopneaCount::TYPE:
+            case PRS1ClearAirwayCount::TYPE:
+            case PRS1ObstructiveApneaCount::TYPE:
+                // Make sure PRS1ClearAirwayEvent/etc. isn't supported before generating events from counts.
+                CHECK_VALUE(supported.contains(PRS1HypopneaEvent::TYPE), false);
+                CHECK_VALUE(supported.contains(PRS1ClearAirwayEvent::TYPE), false);
+                CHECK_VALUE(supported.contains(PRS1ObstructiveApneaEvent::TYPE), false);
 
-            case PRS1TimedBreathEvent::TYPE:
-                // The duration appears to correspond to the length of the timed breath in seconds when multiplied by 0.1 (100ms)!
-                // TODO: consider changing parsers to use milliseconds for time, since it turns out there's at least one way
-                // they can express durations less than 1 second.
-                // TODO: consider allowing OSCAR to record millisecond durations so that the display will say "2.1" instead of "21" or "2".
-                duration = e->m_duration * 100L;  // for now do this here rather than in parser, since parser events don't use milliseconds
-                AddEvent(*channels.at(0), t - duration, e->m_duration * 0.1F, 0.1F);  // TODO: a gain of 0.1 should render this unnecessary, but gain doesn't seem to work currently
-                break;
-
-            case PRS1ObstructiveApneaEvent::TYPE:
-            case PRS1ClearAirwayEvent::TYPE:
-            case PRS1HypopneaEvent::TYPE:
-            case PRS1FlowLimitationEvent::TYPE:
-                AddEvent(channel, t, e->m_duration, e->m_gain);
-                break;
-
-            case PRS1PeriodicBreathingEvent::TYPE:
-            case PRS1LargeLeakEvent::TYPE:
-            case PRS1UnknownDurationEvent::TYPE:
-                // TODO: The graphs silently treat the timestamp of a span as an end time rather than start (see gFlagsLine::paint).
-                // Decide whether to preserve that behavior or change it universally and update either this code or comment.
-                duration = e->m_duration * 1000L;
-                AddEvent(channel, t + duration, e->m_duration, e->m_gain);
-                break;
-
-            case PRS1TotalLeakEvent::TYPE:
-                AddEvent(channel, t, e->m_value, e->m_gain);
-                // F0 up through F0V6 doesn't appear to report unintentional leak.
-                // TODO: decide whether to keep this here, shouldn't keep it here just because it's "quicker".
-                // TODO: compare this value for the reported value for F5V1 and higher?
-                // TODO: Fix this for 0.125 gain: it assumes 0.1 (dividing by 10.0)...
-                //   Or omit, because machines with 0.125 gain report unintentional leak directly.
-                if (calcLeaks) { // Much Quicker doing this here than the recalc method.
-                    EventDataType leak = e->m_value;
-                    leak -= (((currentPressure/10.0f) - 4.0) * ppm + lpm4);
-                    if (leak < 0) leak = 0;
-                    LEAK = *channels.at(1);
-                    AddEvent(LEAK, t, leak, 1);
-                }
-                break;
-
-            case PRS1SnoreEvent::TYPE:  // snore count that shows up in flags but not waveform
-                // TODO: The numeric snore graph is the right way to present this information,
-                // but it needs to be shifted left 2 minutes, since it's not a starting value
-                // but a past statistic.
-                AddEvent(channel, t, e->m_value, e->m_gain);  // Snore count
+                // Divide each count into events evenly spaced over the interval.
+                // NOTE: This is slightly fictional, but there's no waveform data for F3V3, so it won't
+                // incorrectly associate specific events with specific flow or pressure events.
                 if (e->m_value > 0) {
-                    // TODO: currently these get drawn on our waveforms, but they probably shouldn't,
-                    // since they don't have a precise timestamp. They should continue to be drawn
-                    // on the flags overview.
-                    VS2 = *channels.at(1);
-                    AddEvent(VS2, t, 0, 1);
+                    qint64 blockduration = interval_end_t - m_statIntervalStart;
+                    qint64 div = blockduration / e->m_value;
+                    qint64 tt = t;
+                    PRS1ParsedDurationEvent ee(e->m_type, t, 0);
+                    for (int i=0; i < e->m_value; ++i) {
+                        ImportEvent(tt, &ee);
+                        tt += div;
+                    }
                 }
+                
+                // TODO: Consider whether to have a numeric channel for HY/CA/OA that gets charted like VS does,
+                // in which case we can fall through.
                 break;
-            case PRS1VibratorySnoreEvent::TYPE:  // real VS marker on waveform
-                // TODO: These don't need to be drawn separately on the flag overview, since
-                // they're presumably included in the overall snore count statistic. They should
-                // continue to be drawn on the waveform, due to their precise timestamp.
-                AddEvent(channel, t, e->m_value, e->m_gain);
-                break;
-
+                
             default:
-                if (channels.count() == 1) {
-                    // For most events, simply pass the value through to the mapped channel.
-                    AddEvent(channel, t, e->m_value, e->m_gain);
-                } else if (channels.count() > 1) {
-                    // Anything mapped to more than one channel must have a case statement above.
-                    qWarning() << "Missing import handler for PRS1 event type" << (int) e->m_type;
-                    break;
-                } else {
-                    // Not imported, no channels mapped to this event
-                    // These will show up in chunk YAML and any user alerts will be driven by the parser.
+                ImportEvent(t, e);
+                // If this interval event is reported at the end of the slice, import an additional event
+                // marking the end of the data. (The above import marks the beginning of the interval.)
+                if (intervalEvent && interval_end_t == (*m_currentSlice).end) {
+                    ImportEvent(interval_end_t, e);
                 }
                 break;
         }
@@ -2809,10 +2872,135 @@ bool PRS1Import::ImportEventChunk(PRS1DataChunk* event)
     if (!(event->family == 3 && event->familyVersion == 3)) {
         // If the last event has a non-zero duration, t will not reflect the full duration of the chunk, so update it.
         t = qint64(event->timestamp + event->duration) * 1000L;
-        session->updateLast(t);
+        if (session->last() == 0) {
+            qWarning() << sessionid << "End time not set by summary?";
+        } else if (t > session->last()) {
+            // This has only been seen once, with corrupted data, in which the summary and event
+            // files each contained multiple conflicting sessions (all brief) with the same ID.
+            qWarning() << sessionid << "Events continue after summary?";
+        }
+        // Events can end before the session if the mask was off before the equipment turned off.
     }
 
     return true;
+}
+
+
+void PRS1Import::ImportEvent(qint64 t, PRS1ParsedEvent* e)
+{
+    qint64 duration;
+
+    // TODO: Filter out duplicate/overlapping PB and RE events.
+    //
+    // These actually get reported by the machines, but they cause "unordered time" warnings
+    // and they throw off the session statistics. Even official reports show the wrong stats,
+    // for example counting each of 3 duplicate PBs towards the total time in PB.
+    //
+    // It's not clear whether filtering can reasonably be done here or whether it needs
+    // to be done in ImportEventChunk.
+    
+    const QVector<ChannelID*> & channels = PRS1ImportChannelMap[e->m_type];
+    ChannelID channel = NoChannel, PS, VS2, LEAK;
+    if (channels.count() > 0) {
+        channel = *channels.at(0);
+    }
+    
+    switch (e->m_type) {
+        case PRS1PressureSetEvent::TYPE:  // currentPressure is used to calculate unintentional leak, not just PS
+        case PRS1IPAPSetEvent::TYPE:
+        case PRS1IPAPAverageEvent::TYPE:
+            AddEvent(channel, t, e->m_value, e->m_gain);
+            m_currentPressure = e->m_value;
+            break;
+        case PRS1EPAPSetEvent::TYPE:
+            AddEvent(channel, t, e->m_value, e->m_gain);
+            if (m_calcPSfromSet) {
+                PS = *(PRS1ImportChannelMap[PRS1IPAPSetEvent::TYPE].at(1));
+                AddEvent(PS, t, m_currentPressure - e->m_value, e->m_gain);  // Pressure Support
+            }
+            break;
+        case PRS1EPAPAverageEvent::TYPE:
+            PS = *channels.at(1);
+            AddEvent(channel, t, e->m_value, e->m_gain);
+            AddEvent(PS, t, m_currentPressure - e->m_value, e->m_gain);  // Pressure Support
+            break;
+
+        case PRS1TimedBreathEvent::TYPE:
+            // The duration appears to correspond to the length of the timed breath in seconds when multiplied by 0.1 (100ms)!
+            // TODO: consider changing parsers to use milliseconds for time, since it turns out there's at least one way
+            // they can express durations less than 1 second.
+            // TODO: consider allowing OSCAR to record millisecond durations so that the display will say "2.1" instead of "21" or "2".
+            duration = e->m_duration * 100L;  // for now do this here rather than in parser, since parser events don't use milliseconds
+            AddEvent(*channels.at(0), t - duration, e->m_duration * 0.1F, 0.1F);  // TODO: a gain of 0.1 should render this unnecessary, but gain doesn't seem to work currently
+            break;
+
+        case PRS1ObstructiveApneaEvent::TYPE:
+        case PRS1ClearAirwayEvent::TYPE:
+        case PRS1HypopneaEvent::TYPE:
+        case PRS1FlowLimitationEvent::TYPE:
+            AddEvent(channel, t, e->m_duration, e->m_gain);
+            break;
+
+        case PRS1PeriodicBreathingEvent::TYPE:
+        case PRS1LargeLeakEvent::TYPE:
+        case PRS1UnknownDurationEvent::TYPE:
+            // TODO: The graphs silently treat the timestamp of a span as an end time rather than start (see gFlagsLine::paint).
+            // Decide whether to preserve that behavior or change it universally and update either this code or comment.
+            duration = e->m_duration * 1000L;
+            AddEvent(channel, t + duration, e->m_duration, e->m_gain);
+            break;
+
+        case PRS1TotalLeakEvent::TYPE:
+            AddEvent(channel, t, e->m_value, e->m_gain);
+            // F0 up through F0V6 doesn't appear to report unintentional leak.
+            // TODO: decide whether to keep this here, shouldn't keep it here just because it's "quicker".
+            // TODO: compare this value for the reported value for F5V1 and higher?
+            // TODO: Fix this for 0.125 gain: it assumes 0.1 (dividing by 10.0)...
+            //   Or omit, because machines with 0.125 gain report unintentional leak directly.
+            if (m_calcLeaks) { // Much Quicker doing this here than the recalc method.
+                EventDataType leak = e->m_value;
+                leak -= (((m_currentPressure/10.0f) - 4.0) * m_ppm + m_lpm4);
+                if (leak < 0) leak = 0;
+                LEAK = *channels.at(1);
+                AddEvent(LEAK, t, leak, 1);
+            }
+            break;
+
+        case PRS1SnoreEvent::TYPE:  // snore count that shows up in flags but not waveform
+            // TODO: The numeric snore graph is the right way to present this information,
+            // but it needs to be shifted left 2 minutes, since it's not a starting value
+            // but a past statistic.
+            AddEvent(channel, t, e->m_value, e->m_gain);  // Snore count
+            if (e->m_value > 0) {
+                // TODO: currently these get drawn on our waveforms, but they probably shouldn't,
+                // since they don't have a precise timestamp. They should continue to be drawn
+                // on the flags overview. See the comment in ImportEventChunk regarding flags
+                // for numeric channels.
+                VS2 = *channels.at(1);
+                AddEvent(VS2, t, 0, 1);
+            }
+            break;
+        case PRS1VibratorySnoreEvent::TYPE:  // real VS marker on waveform
+            // TODO: These don't need to be drawn separately on the flag overview, since
+            // they're presumably included in the overall snore count statistic. They should
+            // continue to be drawn on the waveform, due to their precise timestamp.
+            AddEvent(channel, t, e->m_value, e->m_gain);
+            break;
+
+        default:
+            if (channels.count() == 1) {
+                // For most events, simply pass the value through to the mapped channel.
+                AddEvent(channel, t, e->m_value, e->m_gain);
+            } else if (channels.count() > 1) {
+                // Anything mapped to more than one channel must have a case statement above.
+                qWarning() << "Missing import handler for PRS1 event type" << (int) e->m_type;
+                break;
+            } else {
+                // Not imported, no channels mapped to this event
+                // These will show up in chunk YAML and any user alerts will be driven by the parser.
+            }
+            break;
+    }
 }
 
 
@@ -2998,9 +3186,9 @@ static const QVector<PRS1ParsedEventType> ParsedEventsF3V3 = {
     PRS1RespiratoryRateEvent::TYPE,
     PRS1MinuteVentilationEvent::TYPE,
     PRS1LeakEvent::TYPE,
-    PRS1HypopneaEvent::TYPE,
-    PRS1ClearAirwayEvent::TYPE,
-    PRS1ObstructiveApneaEvent::TYPE,
+    PRS1HypopneaCount::TYPE,
+    PRS1ClearAirwayCount::TYPE,
+    PRS1ObstructiveApneaCount::TYPE,
     // No PP, FL, VS, RERA, PB, LL
     // No TB
 };
@@ -3021,30 +3209,27 @@ bool PRS1DataChunk::ParseEventsF3V3(void)
         qWarning() << "F3V3 event file with fileVersion 3?";
     }
     
-    int t = 0, tt;
+    int t = 0;
     static const int record_size = 0x10;
     int size = this->m_data.size()/record_size;
     CHECK_VALUE(this->m_data.size() % record_size, 0);
     unsigned char * h = (unsigned char *)this->m_data.data();
 
-    int hy, oa, ca;
-    qint64 div = 0;
+    static const qint64 block_duration = 120;
 
     // Make sure the assumptions here agree with the header
     CHECK_VALUE(this->htype, PRS1_HTYPE_INTERVAL);
     CHECK_VALUE(this->interval_count, size);
-    CHECK_VALUE(this->interval_seconds, 120);
+    CHECK_VALUE(this->interval_seconds, block_duration);
     for (auto & channel : this->waveformInfo) {
         CHECK_VALUE(channel.interleave, 1);
     }
     
-    static const qint64 block_duration = 120;
-
     for (int x=0; x < size; x++) {
-        // TODO: t here is inconsistent with all other parsers: they receive events at the end
-        // of the 2-minute interval with stats for the preceding 2 minutes.  This uses the
-        // starting timestamp currently.
-        //
+        // Use the timestamp of the end of this interval, to be consistent with other parsers,
+        // but see note below regarding the duration of the final interval.
+        t += block_duration;
+
         // TODO: The duration of the final interval isn't clearly defined in this format:
         // there appears to be no way (apart from looking at the summary or waveform data)
         // to determine the end time, which may truncate the last interval.
@@ -3061,44 +3246,12 @@ bool PRS1DataChunk::ParseEventsF3V3(void)
         if (h[9] < 13 || h[9] > 84) UNEXPECTED_VALUE(h[9], "13-84");  // not sure what this is.. encore doesn't graph it.
         CHECK_VALUES(h[10], 0, 8);  // 8 shows as a Low Pressure (LP) alarm
         this->AddEvent(new PRS1MinuteVentilationEvent(t, h[11]));
+        this->AddEvent(new PRS1HypopneaCount(t, h[12]));          // count of hypopnea events
+        this->AddEvent(new PRS1ClearAirwayCount(t, h[13]));       // count of clear airway events
+        this->AddEvent(new PRS1ObstructiveApneaCount(t, h[14]));  // count of obstructive events
         this->AddEvent(new PRS1LeakEvent(t, h[15]));
 
-        hy = h[12];  // count of hypopnea events
-        ca = h[13];  // count of clear airway events
-        oa = h[14];  // count of obstructive events
-
-        // divide each event evenly over the 2 minute block
-        // NOTE: This is slightly fictional, but there's no waveform data for these machines, so it won't
-        // incorrectly associate specific events with specific flow or pressure events.
-        // TODO: Consider whether to have a numeric channel for H/CA/OA that gets charted like VS does.
-        // currently have another good way to represent flags with numeric values (s
-        if (hy > 0) {
-            div = block_duration / hy;
-            tt = t;
-            for (int i=0; i < hy; ++i) {
-                this->AddEvent(new PRS1HypopneaEvent(tt, 0));
-                tt += div;
-            }
-        }
-        if (ca > 0) {
-            div = block_duration / ca;
-            tt = t;
-            for (int i=0; i < ca; ++i) {
-                this->AddEvent(new PRS1ClearAirwayEvent(tt, 0));
-                tt += div;
-            }
-        }
-        if (oa > 0) {
-            div = block_duration / oa;
-            tt = t;
-            for (int i=0; i < oa; ++i) {
-                this->AddEvent(new PRS1ObstructiveApneaEvent(tt, 0));
-                tt += div;
-            }
-        }
-
         h += record_size;
-        t += block_duration;
     }
     
     this->duration = t;
@@ -3187,6 +3340,7 @@ static const QVector<PRS1ParsedEventType> ParsedEventsF0V23 = {
     PRS1HypopneaEvent::TYPE,
     PRS1FlowLimitationEvent::TYPE,
     PRS1VibratorySnoreEvent::TYPE,
+    PRS1UnknownDurationEvent::TYPE,
     PRS1PeriodicBreathingEvent::TYPE,
     PRS1LargeLeakEvent::TYPE,
     PRS1TotalLeakEvent::TYPE,
@@ -3357,7 +3511,7 @@ bool PRS1DataChunk::ParseEventsF0V23()
                 DUMP_EVENT();
                 UNEXPECTED_VALUE(code, "known event code");
                 this->AddEvent(new PRS1UnknownDataEvent(m_data, startpos));
-                ok = false;  // unlike F0V6, we don't know the size of unknown slices, so we can't recover
+                ok = false;  // unlike F0V6, we don't know the size of unknown events, so we can't recover
                 break;
         }
         pos = startpos + size;
@@ -3385,6 +3539,7 @@ static const QVector<PRS1ParsedEventType> ParsedEventsF0V4 = {
     PRS1HypopneaEvent::TYPE,
     PRS1FlowLimitationEvent::TYPE,
     PRS1VibratorySnoreEvent::TYPE,
+    PRS1UnknownDurationEvent::TYPE,
     PRS1PeriodicBreathingEvent::TYPE,
     PRS1LargeLeakEvent::TYPE,
     PRS1TotalLeakEvent::TYPE,
@@ -3557,7 +3712,7 @@ bool PRS1DataChunk::ParseEventsF0V4()
                 DUMP_EVENT();
                 UNEXPECTED_VALUE(code, "known event code");
                 this->AddEvent(new PRS1UnknownDataEvent(m_data, startpos));
-                ok = false;  // unlike F0V6, we don't know the size of unknown slices, so we can't recover
+                ok = false;  // unlike F0V6, we don't know the size of unknown events, so we can't recover
                 break;
         }
         pos = startpos + size;
@@ -3585,6 +3740,7 @@ static const QVector<PRS1ParsedEventType> ParsedEventsF0V6 = {
     PRS1HypopneaEvent::TYPE,
     PRS1FlowLimitationEvent::TYPE,
     PRS1VibratorySnoreEvent::TYPE,
+    PRS1UnknownDurationEvent::TYPE,
     PRS1PeriodicBreathingEvent::TYPE,
     PRS1LargeLeakEvent::TYPE,
     PRS1TotalLeakEvent::TYPE,
@@ -3858,13 +4014,7 @@ bool PRS1Import::ImportCompliance()
     for (int i=0; i < compliance->m_parsedData.count(); i++) {
         PRS1ParsedEvent* e = compliance->m_parsedData.at(i);
         if (e->m_type == PRS1ParsedSliceEvent::TYPE) {
-            PRS1ParsedSliceEvent* s = (PRS1ParsedSliceEvent*) e;
-            qint64 tt = start + qint64(s->m_start) * 1000L;
-            if (!session->m_slices.isEmpty()) {
-                SessionSlice & prevSlice = session->m_slices.last();
-                prevSlice.end = tt;
-            }
-            session->m_slices.append(SessionSlice(tt, tt, (SliceStatus) s->m_value));
+            AddSlice(start, e);
             continue;
         } else if (e->m_type != PRS1ParsedSettingEvent::TYPE) {
             qWarning() << "Compliance had non-setting event:" << (int) e->m_type;
@@ -5225,7 +5375,7 @@ bool PRS1DataChunk::ParseSettingsF3V6(const unsigned char* data, int size)
                     this->AddEvent(new PRS1ParsedSettingEvent(PRS1_SETTING_FLEX_LEVEL, data[pos]));
                 } else if (flexmode == FLEX_None || flexmode == FLEX_AVAPS) {
                     // Rise time
-                    if (data[pos] < 1 || data[pos] > 4) UNEXPECTED_VALUE(data[pos], "1-4");  // 1-4 have been seen
+                    if (data[pos] < 1 || data[pos] > 6) UNEXPECTED_VALUE(data[pos], "1-6");  // 1-6 have been seen
                     this->AddEvent(new PRS1ParsedSettingEvent(PRS1_SETTING_RISE_TIME, data[pos]));
                 }
                 // TODO: where's timed inspiration?
@@ -6584,6 +6734,19 @@ bool PRS1DataChunk::ParseSettingsF5V3(const unsigned char* data, int size)
 }
 
 
+void PRS1Import::AddSlice(qint64 start, PRS1ParsedEvent* e)
+{
+    // Cache all slices and incrementally calculate their durations.
+    PRS1ParsedSliceEvent* s = (PRS1ParsedSliceEvent*) e;
+    qint64 tt = start + qint64(s->m_start) * 1000L;
+    if (!m_slices.isEmpty()) {
+        SessionSlice & prevSlice = m_slices.last();
+        prevSlice.end = tt;
+    }
+    m_slices.append(SessionSlice(tt, tt, (SliceStatus) s->m_value));
+}
+
+
 bool PRS1Import::ImportSummary()
 {
     if (!summary) {
@@ -6612,13 +6775,7 @@ bool PRS1Import::ImportSummary()
     for (int i=0; i < summary->m_parsedData.count(); i++) {
         PRS1ParsedEvent* e = summary->m_parsedData.at(i);
         if (e->m_type == PRS1ParsedSliceEvent::TYPE) {
-            PRS1ParsedSliceEvent* s = (PRS1ParsedSliceEvent*) e;
-            qint64 tt = start + qint64(s->m_start) * 1000L;
-            if (!session->m_slices.isEmpty()) {
-                SessionSlice & prevSlice = session->m_slices.last();
-                prevSlice.end = tt;
-            }
-            session->m_slices.append(SessionSlice(tt, tt, (SliceStatus) s->m_value));
+            AddSlice(start, e);
             continue;
         } else if (e->m_type != PRS1ParsedSettingEvent::TYPE) {
             qWarning() << "Summary had non-setting event:" << (int) e->m_type;
@@ -6745,18 +6902,12 @@ bool PRS1Import::ImportSummary()
     }
     session->settings[CPAP_Mode] = cpapmode;
     
-    summary_duration = summary->duration;
-
     if (summary->duration == 0) {
         // This does occasionally happen and merely indicates a brief session with no useful data.
-        //qDebug() << summary->sessionid << "duration == 0";
-        return true;  // Don't bail for now, since some summary parsers are still very broken, so we want to proceed to events/waveforms.
+        // This requires the use of really_set_last below, which otherwise rejects 0 length.
+        //qDebug() << summary->sessionid << "session duration == 0";
     }
-    
-    // Intentionally don't set the session's duration based on the summary duration.
-    // That only happens in PRS1Import::ParseSession() as a last resort.
-    // TODO: Revisit this once summary parsing is reliable.
-    //session->set_last(...);
+    session->really_set_last(qint64(summary->timestamp + summary->duration) * 1000L);
     
     return true;
 }
@@ -6891,22 +7042,64 @@ bool PRS1DataChunk::ParseEvents()
 
 bool PRS1Import::ImportEvents()
 {
-    bool ok = CreateEventChannels(m_event_chunks.first());
+    bool ok = true;
     
-    if (ok) {
-        for (auto & event : m_event_chunks.values()) {
-            bool chunk_ok = this->ImportEventChunk(event);
-            if (!chunk_ok && m_event_chunks.count() > 1) {
-                // Specify which chunk had problems if there's more than one. ParseSession will warn about the overall result.
-                qWarning() << event->sessionid << QString("Error parsing events in %1 @ %2, continuing")
-                    .arg(relativePath(event->m_path))
-                    .arg(event->m_filepos);
-            }
-            ok &= chunk_ok;
+    for (auto & event : m_event_chunks.values()) {
+        bool chunk_ok = this->ImportEventChunk(event);
+        if (!chunk_ok && m_event_chunks.count() > 1) {
+            // Specify which chunk had problems if there's more than one. ParseSession will warn about the overall result.
+            qWarning() << event->sessionid << QString("Error parsing events in %1 @ %2, continuing")
+                .arg(relativePath(event->m_path))
+                .arg(event->m_filepos);
         }
+        ok &= chunk_ok;
     }
 
     if (ok) {
+        // Sanity check: warn if channels' eventlists don't line up with the final mask-on slices.
+        // First make a list of the mask-on slices that will be imported (nonzero duration)
+        QVector<SessionSlice> maskOn;
+        for (auto & slice : m_slices) {
+            if (slice.status == MaskOn && slice.end > slice.start) {
+                maskOn.append(slice);
+            }
+        }
+        // Then go through each required channel and make sure each eventlist is within
+        // the bounds of the corresponding slice, warn if not.
+        if (maskOn.count() > 0 && m_event_chunks.count() > 0) {
+            int offset = 0;
+            // F3V3 sometimes omits the (empty) first event chunk if the first slice is
+            // shorter than 2 minutes.
+            if (m_event_chunks.first()->family == 3 && m_event_chunks.first()->familyVersion == 3) {
+                offset = maskOn.count() - m_event_chunks.count();
+                if (offset < 0) {
+                    qCritical() << sessionid << "has more event chunks than mask-on slices!";
+                    offset = 0;  // avoid out-of-bounds references below
+                }
+            }
+            const QVector<PRS1ParsedEventType> & supported = GetSupportedEvents(m_event_chunks.first());
+            for (auto & e : supported) {
+                if (!PRS1OnDemandChannels.contains(e) && !PRS1NonSliceChannels.contains(e)) {
+                    for (auto & pChannelID : PRS1ImportChannelMap[e]) {
+                        auto & eventlists = session->eventlist[*pChannelID];
+                        if (eventlists.count() + offset != maskOn.count()) {
+                            qWarning() << sessionid << "has" << maskOn.count() << "mask-on slices, channel"
+                                << *pChannelID << "has" << eventlists.count() << "eventlists";
+                            continue;
+                        }
+                        for (int i = 0; i < eventlists.count(); i++) {
+                            if (eventlists[i]->count() == 0) continue;  // no first/last timestamp
+                            int j = i + offset;
+                            if (eventlists[i]->first() < maskOn[j].start || eventlists[i]->first() > maskOn[j].end ||
+                                eventlists[i]->last() < maskOn[j].start || eventlists[i]->last() > maskOn[j].end) {
+                                qWarning() << sessionid << "channel" << *pChannelID << "has events outside of mask-on slice" << i;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    
         session->m_cnt.clear();
         session->m_cph.clear();
 
@@ -7040,10 +7233,8 @@ bool PRS1Import::ParseWaveforms()
     int size = waveforms.size();
     quint64 s1, s2;
 
-
     int discontinuities = 0;
     qint64 lastti=0;
-    EventList * bnd = nullptr; // Breathing Not Detected
 
     for (int i=0; i < size; ++i) {
         PRS1DataChunk * waveform = waveforms.at(i);
@@ -7059,7 +7250,17 @@ bool PRS1Import::ParseWaveforms()
 
         qint64 diff = ti - lastti;
         if ((lastti != 0) && (diff == 1000 || diff == -1000)) {
-            // TODO: Evidently the machines' internal clock drifts slightly, and in some sessions that
+            // TODO: Handle discontinuities properly.
+            // Option 1: preserve the discontinuity and make it apparent:
+            // - In the case of a 1-sec overlap, truncate the previous waveform by 1s (+1 sample).
+            // - Then start a new eventlist for the new section.
+            // > The down side of this approach is gaps in the data.
+            // Option 2: slide the waveform data a fraction of a second to avoid the discontinuity
+            // - In the case of a single discontinuity, simply adjust the timestamps of each section by 0.5s so they meet.
+            // - In the case of multiple discontinuities, fitting them is more complicated
+            // > The down side of this approach is that events won't line up exactly the same as official reports.
+            //
+            // Evidently the machines' internal clock drifts slightly, and in some sessions that
             // means two adjacent (5-minute) waveform chunks have have a +/- 1 second difference in
             // their notion of the correct time, since the machines only record time at 1-second
             // resolution. Presumably the real drift is fractional, but there's no way to tell from
@@ -7071,26 +7272,12 @@ bool PRS1Import::ParseWaveforms()
             //
             // At worst in the former case it seems preferable to drop the overlap and then one
             // additional second to mark the discontinuity. But depending how often these drifts
-            // occur, it may be possible to adjust all the data so that it's continuous. Alternatively,
-            // if it turns out overlapping waveform data always has overlapping identical values,
-            // it might be possible to drop the duplicated sample. Though that would mean that
-            // gaps are real, though potentially only by a single sample.
-            //
-            qDebug() << waveform->sessionid << "waveform discontinuity:" << (diff / 1000L) << "s @" << ts(waveform->timestamp * 1000L);
+            // occur, it may be possible to adjust all the data so that it's continuous. "Overlapping"
+            // data is not identical, so it seems like these discontinuities are simply an artifact
+            // of timestamping at 1-second intervals right around the 1-second boundary.
+
+            //qDebug() << waveform->sessionid << "waveform discontinuity:" << (diff / 1000L) << "s @" << ts(waveform->timestamp * 1000L);
             discontinuities++;
-        }
-        if ((diff > 1000) && (lastti != 0)) {
-            if (!bnd) {
-                bnd = session->AddEventList(PRS1_BND, EVL_Event);
-            }
-            // TODO: The machines' notion of BND appears to derive from the summary (maskoff/maskon)
-            // slices, but the waveform data (when present) does seem to agree. This should be confirmed
-            // once all summary parsers support slices.
-            if ((diff / 1000L) % 60) {
-                // Thus far all maskoff/maskon gaps have been multiples of 1 minute.
-                qDebug() << waveform->sessionid << "BND?" << (diff / 1000L) << "=" << ts(waveform->timestamp * 1000L) << "-" << ts(lastti);
-            }
-            bnd->AddEvent(ti, double(diff)/1000.0);
         }
 
         if (num > 1) {
@@ -7160,11 +7347,10 @@ bool PRS1Import::ParseSession(void)
     session = new Session(mach, sessionid);
 
     do {
-        // TODO: There should be a way to distinguish between no-data-to-import vs. parsing errors
-        // (once we figure out what's benign and what isn't).
         if (compliance != nullptr) {
             ok = ImportCompliance();
             if (!ok) {
+                // We don't see any parse errors with our test data, so warn if there's ever an error encountered.
                 qWarning() << sessionid << "Error parsing compliance, skipping session";
                 break;
             }
@@ -7176,19 +7362,45 @@ bool PRS1Import::ParseSession(void)
             }
             ok = ImportSummary();
             if (!ok) {
+                // We don't see any parse errors with our test data, so warn if there's ever an error encountered.
                 qWarning() << sessionid << "Error parsing summary, skipping session";
                 break;
             }
         }
         if (compliance == nullptr && summary == nullptr) {
+            // With one exception, the only time we've seen missing .000 or .001 data has been with a corrupted card,
+            // or occasionally with partial cards where the .002 is the first file in the Pn directory
+            // and we're missing the preceding directory. Since the lack of compliance or summary means we
+            // don't know the therapy settings or if the mask was ever off, we just skip this very rare case.
             qWarning() << sessionid << "No compliance or summary, skipping session";
             break;
         }
         
-        // TODO: filter out 0-length slices, since they cause problems for Day::total_time()
-        // and possibly filter out everything except mask on/off, since the gSessionTimesChart::paint
-        // assumes that assumes that. Or rework the slice system to be more robust.
+        // Import the slices into the session
+        for (auto & slice : m_slices) {
+            // Filter out 0-length slices, since they cause problems for Day::total_time().
+            if (slice.end > slice.start) {
+                // Filter out everything except mask on/off, since gSessionTimesChart::paint assumes those are the only options.
+                if (slice.status == MaskOn) {
+                    session->m_slices.append(slice);
+                } else if (slice.status == MaskOff) {
+                    // Mark this slice as BND
+                    AddEvent(PRS1_BND, slice.end, (slice.end - slice.start) / 1000L, 1.0);
+                    session->m_slices.append(slice);
+                }
+            }
+        }
         
+        // If are no mask-on slices, then there's not any meaningful event or waveform data for the session.
+        // If there's no no event or waveform data, mark this session as a summary.
+        if (session->m_slices.count() == 0 || (m_event_chunks.count() == 0 && m_wavefiles.isEmpty() && oxifile.isEmpty())) {
+            session->setSummaryOnly(true);
+            save = true;
+            break;  // and skip the occasional fragmentary event or waveform data
+        }
+
+        // TODO: There should be a way to distinguish between no-data-to-import vs. parsing errors
+        // (once we figure out what's benign and what isn't).
         if (m_event_chunks.count() > 0) {
             ok = ImportEvents();
             if (!ok) {
@@ -7214,36 +7426,7 @@ bool PRS1Import::ParseSession(void)
             }
         }
 
-        if (session->first() > 0) {
-            if (session->last() < session->first()) {
-                // Compliance uses set_last() to set the session's last timestamp, so it
-                // won't reach this point.
-                if (compliance != nullptr) {
-                    qWarning() << sessionid << "compliance didn't set session end?";
-                }
-
-                // Events and  use updateLast() to set the session's last timestamp,
-                // so they should only reach this point if there was a problem parsing them.
-
-                // TODO: It turns out waveforms *don't* update the timestamp, so this
-                // is depending entirely on events. See TODO below.
-                if (m_event_chunks.count() > 0 || !m_wavefiles.isEmpty() || !oxifile.isEmpty()) {
-                    qWarning() << sessionid << "Downgrading session to summary only";
-                }
-                session->setSummaryOnly(true);
-
-                // Only use the summary's duration if the session's duration couldn't be
-                // derived from events or waveforms.
-                
-                // TODO: Change this once summary parsing is reliable: event duration is less
-                // accurate than either waveforms or correctly-parsed summaries, since there
-                // won't necessarily be events at the very end of a session.
-                session->really_set_last(session->first()+(qint64(summary_duration) * 1000L));
-            }
-            save = true;
-        } else {
-            qWarning() << sessionid << "missing start time";
-        }
+        save = true;
     } while (false);
     
     return save;
