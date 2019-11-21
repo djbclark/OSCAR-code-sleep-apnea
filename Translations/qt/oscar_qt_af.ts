@@ -1,90 +1,65 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE TS>
-<TS version="2.1" language="af">
+<TS version="2.1" language="af_ZA">
 <context>
-    <name>QShortcut</name>
+    <name>Help</name>
     <message>
         <source>No</source>
         <translation>Nee</translation>
     </message>
-    <message>
-        <source>Yes</source>
-        <translation>Ja</translation>
-    </message>
 </context>
 <context>
-    <name>QPlatformTheme</name>
+    <name>QObject</name>
     <message>
-        <source>OK</source>
-        <translation>OK</translation>
+        <source>No</source>
+        <translation>Nee</translation>
     </message>
     <message>
         <source>&amp;No</source>
         <translation>&amp;Nee</translation>
     </message>
     <message>
+        <source>Yes</source>
+        <translation>Ja</translation>
+    </message>
+    <message>
         <source>&amp;Yes</source>
         <translation>&amp;Ja</translation>
     </message>
+</context>
+<context>
+    <name>MainWindow</name>
     <message>
         <source>Help</source>
         <translation>Hulp</translation>
     </message>
-    <message>
-        <source>Open</source>
-        <translation>Oopmaak</translation>
-    </message>
-    <message>
-        <source>Save</source>
-        <translation>Stoor</translation>
-    </message>
+</context>
+<context>
+    <name>ProgressDialog</name>
     <message>
         <source>Abort</source>
         <translation>Afbreek</translation>
     </message>
-    <message>
-        <source>Apply</source>
-        <translation>Toepas</translation>
-    </message>
+</context>
+<context>
+    <name>AboutDialog</name>
     <message>
         <source>Close</source>
         <translation>Sluit</translation>
     </message>
+</context>
+<context>
+    <name>OximeterImport</name>
     <message>
-        <source>Reset</source>
-        <translation>Herstel</translation>
+        <source>Close</source>
+        <translation>Sluit</translation>
     </message>
-    <message>
-        <source>Retry</source>
-        <translation>Weer</translation>
-    </message>
-    <message>
-        <source>Restore Defaults</source>
-        <translation>Herstel verstek</translation>
-    </message>
+</context>
+<context>
+    <name>ExportCSV</name>
     <message>
         <source>Cancel</source>
         <translation>Kanselleer</translation>
-    </message>
-    <message>
-        <source>Ignore</source>
-        <translation>Ignoreer</translation>
-    </message>
-    <message>
-        <source>N&amp;o to All</source>
-        <translation>N&amp;ee vir almal</translation>
-    </message>
-    <message>
-        <source>Save All</source>
-        <translation>Spaar alles</translation>
-    </message>
-    <message>
-        <source>Discard</source>
-        <translation>Weggooi</translation>
-    </message>
-    <message>
-        <source>Yes to &amp;All</source>
-        <translation>Ja vir &amp;alles</translation>
     </message>
 </context>
 </TS>

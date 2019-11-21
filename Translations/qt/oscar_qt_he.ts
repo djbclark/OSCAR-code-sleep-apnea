@@ -1,90 +1,65 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE TS>
-<TS version="2.1" language="he">
+<TS version="2.1" language="he_IL">
 <context>
-    <name>QShortcut</name>
+    <name>Help</name>
     <message>
         <source>No</source>
         <translation>לא</translation>
     </message>
-    <message>
-        <source>Yes</source>
-        <translation>כן</translation>
-    </message>
 </context>
 <context>
-    <name>QPlatformTheme</name>
+    <name>QObject</name>
     <message>
-        <source>OK</source>
-        <translation>אישור</translation>
+        <source>No</source>
+        <translation>לא</translation>
     </message>
     <message>
         <source>&amp;No</source>
         <translation>&amp;לא</translation>
     </message>
     <message>
+        <source>Yes</source>
+        <translation>כן</translation>
+    </message>
+    <message>
         <source>&amp;Yes</source>
         <translation>&amp;כן</translation>
     </message>
+</context>
+<context>
+    <name>MainWindow</name>
     <message>
         <source>Help</source>
         <translation>עזרה</translation>
     </message>
-    <message>
-        <source>Open</source>
-        <translation>פתיחה</translation>
-    </message>
-    <message>
-        <source>Save</source>
-        <translation>שמור</translation>
-    </message>
+</context>
+<context>
+    <name>ProgressDialog</name>
     <message>
         <source>Abort</source>
         <translation>בטל</translation>
     </message>
-    <message>
-        <source>Apply</source>
-        <translation>החל</translation>
-    </message>
+</context>
+<context>
+    <name>AboutDialog</name>
     <message>
         <source>Close</source>
         <translation>סגור</translation>
     </message>
+</context>
+<context>
+    <name>OximeterImport</name>
     <message>
-        <source>Reset</source>
-        <translation>אפס</translation>
+        <source>Close</source>
+        <translation>סגור</translation>
     </message>
-    <message>
-        <source>Retry</source>
-        <translation>נסה שוב</translation>
-    </message>
-    <message>
-        <source>Restore Defaults</source>
-        <translation>שחזר ברירות מחדל</translation>
-    </message>
+</context>
+<context>
+    <name>ExportCSV</name>
     <message>
         <source>Cancel</source>
         <translation>ביטול</translation>
-    </message>
-    <message>
-        <source>Ignore</source>
-        <translation>התעלם</translation>
-    </message>
-    <message>
-        <source>N&amp;o to All</source>
-        <translation>ל&amp;א להכל</translation>
-    </message>
-    <message>
-        <source>Save All</source>
-        <translation>שמור הכל</translation>
-    </message>
-    <message>
-        <source>Discard</source>
-        <translation>שכח</translation>
-    </message>
-    <message>
-        <source>Yes to &amp;All</source>
-        <translation>כן ל&amp;הכל</translation>
     </message>
 </context>
 </TS>

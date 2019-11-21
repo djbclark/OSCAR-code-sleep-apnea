@@ -1,90 +1,65 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE TS>
-<TS version="2.1" language="de">
+<TS version="2.1" language="de_DE">
 <context>
-    <name>QShortcut</name>
+    <name>Help</name>
     <message>
         <source>No</source>
         <translation>Nein</translation>
     </message>
-    <message>
-        <source>Yes</source>
-        <translation>Ja</translation>
-    </message>
 </context>
 <context>
-    <name>QPlatformTheme</name>
+    <name>QObject</name>
     <message>
-        <source>OK</source>
-        <translation>OK</translation>
+        <source>No</source>
+        <translation>Nein</translation>
     </message>
     <message>
         <source>&amp;No</source>
         <translation>&amp;Nein</translation>
     </message>
     <message>
+        <source>Yes</source>
+        <translation>Ja</translation>
+    </message>
+    <message>
         <source>&amp;Yes</source>
         <translation>&amp;Ja</translation>
     </message>
+</context>
+<context>
+    <name>MainWindow</name>
     <message>
         <source>Help</source>
         <translation>Hilfe</translation>
     </message>
-    <message>
-        <source>Open</source>
-        <translation>Öffnen</translation>
-    </message>
-    <message>
-        <source>Save</source>
-        <translation>Speichern</translation>
-    </message>
+</context>
+<context>
+    <name>ProgressDialog</name>
     <message>
         <source>Abort</source>
         <translation>Abbrechen</translation>
     </message>
-    <message>
-        <source>Apply</source>
-        <translation>Anwenden</translation>
-    </message>
+</context>
+<context>
+    <name>AboutDialog</name>
     <message>
         <source>Close</source>
         <translation>Schließen</translation>
     </message>
+</context>
+<context>
+    <name>OximeterImport</name>
     <message>
-        <source>Reset</source>
-        <translation>Zurücksetzen</translation>
+        <source>Close</source>
+        <translation>Schließen</translation>
     </message>
-    <message>
-        <source>Retry</source>
-        <translation>Wiederholen</translation>
-    </message>
-    <message>
-        <source>Restore Defaults</source>
-        <translation>Voreinstellungen</translation>
-    </message>
+</context>
+<context>
+    <name>ExportCSV</name>
     <message>
         <source>Cancel</source>
         <translation>Abbrechen</translation>
-    </message>
-    <message>
-        <source>Ignore</source>
-        <translation>Ignorieren</translation>
-    </message>
-    <message>
-        <source>N&amp;o to All</source>
-        <translation>N&amp;ein, keine</translation>
-    </message>
-    <message>
-        <source>Save All</source>
-        <translation>Alles speichern</translation>
-    </message>
-    <message>
-        <source>Discard</source>
-        <translation>Verwerfen</translation>
-    </message>
-    <message>
-        <source>Yes to &amp;All</source>
-        <translation>Ja, &amp;alle</translation>
     </message>
 </context>
 </TS>
