@@ -938,7 +938,7 @@ void PRS1Loader::ScanFiles(const QStringList & paths, int sessionid_base, Machin
                     // Should probably check if session already imported has this data missing..
 
                     // Create the group if we see it first..
-                    task = new PRS1Import(this, sid, m);
+                    task = new PRS1Import(this, sid, m, sessionid_base);
                     sesstasks[sid] = task;
                     queTask(task);
                 }
@@ -955,7 +955,6 @@ void PRS1Loader::ScanFiles(const QStringList & paths, int sessionid_base, Machin
                     // All samples exhibiting this behavior are DreamStations.
                     task->m_wavefiles.append(fi.canonicalFilePath());
                 } else if (ext == 6) {
-                    qWarning() << fi.canonicalFilePath() << "oximetry is untested";  // TODO: mark as untested/unexpected
                     if (!task->oxifile.isEmpty()) {
                         qDebug() << sid << "already has oximetry file" << relativePath(task->oxifile)
                             << "skipping" << relativePath(fi.canonicalFilePath());
@@ -994,7 +993,7 @@ void PRS1Loader::ScanFiles(const QStringList & paths, int sessionid_base, Machin
                 if (it != sesstasks.end()) {
                     task = it.value();
                 } else {
-                    task = new PRS1Import(this, chunk_sid, m);
+                    task = new PRS1Import(this, chunk_sid, m, sessionid_base);
                     sesstasks[chunk_sid] = task;
                     // save a loop an que this now
                     queTask(task);
@@ -1025,6 +1024,10 @@ void PRS1Loader::ScanFiles(const QStringList & paths, int sessionid_base, Machin
                             //qDebug() << chunkComparison(chunk, task->summary);
                         } else {
                             // Warn about any non-identical duplicate session IDs.
+                            //
+                            // This seems to happen with F5V1 slice 8, which is the only slice in a session,
+                            // and which doesn't update the session ID, so the following slice 7 session
+                            // (which can be hours later) has the same session ID. Neither affects import.
                             qWarning() << chunkComparison(chunk, task->summary);
                         }
                         delete chunk;
@@ -2055,7 +2058,7 @@ bool PRS1DataChunk::ParseEventsF5V0(void)
             case 0x02:  // Pressure adjustment
                 this->AddEvent(new PRS1EPAPSetEvent(t, data[pos++]));
                 break;
-            //case 0x03:  // never seen on F5V0
+            //case 0x03:  // never seen on F5V0; probably pressure pulse, see F5V1
             case 0x04:  // Timed Breath
                 // TB events have a duration in 0.1s, based on the review of pressure waveforms.
                 // TODO: Ideally the starting time here would be adjusted here, but PRS1ParsedEvents
@@ -2156,6 +2159,7 @@ bool PRS1DataChunk::ParseEventsF5V0(void)
 
 static const QVector<PRS1ParsedEventType> ParsedEventsF5V1 = {
     PRS1EPAPSetEvent::TYPE,
+    PRS1PressurePulseEvent::TYPE,
     PRS1TimedBreathEvent::TYPE,
     PRS1ObstructiveApneaEvent::TYPE,
     PRS1ClearAirwayEvent::TYPE,
@@ -2186,7 +2190,7 @@ bool PRS1DataChunk::ParseEventsF5V1(void)
     }
     const unsigned char * data = (unsigned char *)this->m_data.constData();
     int chunk_size = this->m_data.size();
-    static const QMap<int,int> event_sizes = { {1,2}, {3,4}, {8,4}, {9,3}, {0xa,2}, {0xb,5}, {0xc,5}, {0xd,0xd} };
+    static const QMap<int,int> event_sizes = { {1,2}, {8,4}, {9,3}, {0xa,2}, {0xb,5}, {0xc,5}, {0xd,0xd} };
 
     if (chunk_size < 1) {
         // This does occasionally happen in F0V6.
@@ -2223,7 +2227,10 @@ bool PRS1DataChunk::ParseEventsF5V1(void)
             case 0x02:  // Pressure adjustment
                 this->AddEvent(new PRS1EPAPSetEvent(t, data[pos++]));
                 break;
-            //case 0x03:  // never seen on F5V1
+            case 0x03:  // Pressure Pulse
+                duration = data[pos];  // TODO: is this a duration?
+                this->AddEvent(new PRS1PressurePulseEvent(t, duration));
+                break;
             case 0x04:  // Timed Breath
                 // TB events have a duration in 0.1s, based on the review of pressure waveforms.
                 // TODO: Ideally the starting time here would be adjusted here, but PRS1ParsedEvents
@@ -4243,7 +4250,7 @@ bool PRS1DataChunk::ParseSummaryF0V23()
     int pos = 0;
     int code, size;
     int tt = 0;
-    do {
+    while (ok && pos < chunk_size) {
         code = data[pos++];
         // There is no hblock prior to F0V6.
         size = 0;
@@ -4321,7 +4328,7 @@ bool PRS1DataChunk::ParseSummaryF0V23()
                 break;
         }
         pos += size;
-    } while (ok && pos < chunk_size);
+    }
 
     if (ok && pos != chunk_size) {
         qWarning() << this->sessionid << (this->size() - pos) << "trailing bytes";
@@ -4613,7 +4620,7 @@ bool PRS1DataChunk::ParseSummaryF0V4(void)
     int pos = 0;
     int code, size;
     int tt = 0;
-    do {
+    while (ok && pos < chunk_size) {
         code = data[pos++];
         // There is no hblock prior to F0V6.
         size = 0;
@@ -4768,7 +4775,7 @@ bool PRS1DataChunk::ParseSummaryF0V4(void)
                 break;
         }
         pos += size;
-    } while (ok && pos < chunk_size);
+    }
 
     if (ok && pos != chunk_size) {
         qWarning() << this->sessionid << (this->size() - pos) << "trailing bytes";
@@ -4967,7 +4974,7 @@ bool PRS1DataChunk::ParseSummaryF3V3(void)
     int pos = 0;
     int code, size;
     int tt = 0;
-    do {
+    while (ok && pos < chunk_size) {
         code = data[pos++];
         // There is no hblock prior to F3V6.
         size = 0;
@@ -5060,7 +5067,7 @@ bool PRS1DataChunk::ParseSummaryF3V3(void)
                 break;
         }
         pos += size;
-    } while (ok && pos < chunk_size);
+    }
 
     if (ok && pos != chunk_size) {
         qWarning() << this->sessionid << (this->size() - pos) << "trailing bytes";
@@ -5101,7 +5108,7 @@ bool PRS1DataChunk::ParseSummaryF3V6(void)
     int pos = 0;
     int code, size;
     int tt = 0;
-    do {
+    while (ok && pos < chunk_size) {
         code = data[pos++];
         if (!this->hblock.contains(code)) {
             qWarning() << this->sessionid << "missing hblock entry for" << code;
@@ -5215,7 +5222,7 @@ bool PRS1DataChunk::ParseSummaryF3V6(void)
                 break;
         }
         pos += size;
-    } while (ok && pos < chunk_size);
+    }
 
     this->duration = tt;
 
@@ -5514,10 +5521,11 @@ bool PRS1DataChunk::ParseSettingsF5V012(const unsigned char* data, int /*size*/)
     CHECK_VALUE(data[pos] & (0x80|0x04), 0);
     CHECK_VALUE(data[pos+1] & ~(0x40|1), 0);
     
-    if (data[pos+2]) CHECK_VALUE(data[pos+2], data[pos+4]);  // distinguish between disconnect and apnea alarm
-    CHECK_VALUES(data[pos+2], 0, 1);  // 1 = disconnect alarm 15 or apnea alarm 10
+    CHECK_VALUES(data[pos+2], 0, 1);  // 1 = apnea alarm 10
     CHECK_VALUE(data[pos+3], 0);  // low MV alarm?
-    CHECK_VALUES(data[pos+4], 0, 1);  // 1 = disconnect alarm 15 or apnea alarm 10
+    if (data[pos+4]) {
+        CHECK_VALUES(data[pos+4], 1, 2);  // 1 = disconnect alarm 15, 2 = disconnect alarm 60
+    }
 
     return true;
 }
@@ -5544,7 +5552,7 @@ bool PRS1DataChunk::ParseSummaryF5V012(void)
     int pos = 0;
     int code, size;
     int tt = 0;
-    do {
+    while (ok && pos < chunk_size) {
         code = data[pos++];
         // There is no hblock prior to F0V6.
         size = 0;
@@ -5667,11 +5675,7 @@ bool PRS1DataChunk::ParseSummaryF5V012(void)
                 tt += data[pos] | (data[pos+1] << 8);  // This adds to the total duration (otherwise it won't match report)
                 break;
             case 8:  // ???
-                tt += data[pos] | (data[pos+1] << 8);  // Since 7 and 8 seem to occur near each other, let's assume 8 also has a timestamp
-                CHECK_VALUE(pos, 1);
-                CHECK_VALUE(chunk_size, 3);
-                CHECK_VALUE(data[pos], 0);  // and alert us if the timestamp is nonzero
-                CHECK_VALUE(data[pos+1], 0);
+                tt += data[pos] | (data[pos+1] << 8);  // This also adds to the total duration (otherwise it won't match report)
                 break;
             case 9:  // Humidifier setting change
                 tt += data[pos] | (data[pos+1] << 8);  // This adds to the total duration (otherwise it won't match report)
@@ -5683,7 +5687,7 @@ bool PRS1DataChunk::ParseSummaryF5V012(void)
                 break;
         }
         pos += size;
-    } while (ok && pos < chunk_size);
+    }
 
     if (ok && pos != chunk_size) {
         qWarning() << this->sessionid << (this->size() - pos) << "trailing bytes";
@@ -6245,7 +6249,7 @@ bool PRS1DataChunk::ParseSummaryF0V6(void)
     int pos = 0;
     int code, size;
     int tt = 0;
-    do {
+    while (ok && pos < chunk_size) {
         code = data[pos++];
         if (!this->hblock.contains(code)) {
             qWarning() << this->sessionid << "missing hblock entry for" << code;
@@ -6394,7 +6398,7 @@ bool PRS1DataChunk::ParseSummaryF0V6(void)
                 break;
         }
         pos += size;
-    } while (ok && pos < chunk_size);
+    }
 
     this->duration = tt;
 
@@ -6432,7 +6436,7 @@ bool PRS1DataChunk::ParseSummaryF5V3(void)
     int pos = 0;
     int code, size;
     int tt = 0;
-    do {
+    while (ok && pos < chunk_size) {
         code = data[pos++];
         if (!this->hblock.contains(code)) {
             qWarning() << this->sessionid << "missing hblock entry for" << code;
@@ -6547,7 +6551,7 @@ bool PRS1DataChunk::ParseSummaryF5V3(void)
                 break;
         }
         pos += size;
-    } while (ok && pos < chunk_size);
+    }
 
     this->duration = tt;
 
@@ -7131,10 +7135,33 @@ QList<PRS1DataChunk *> PRS1Import::CoalesceWaveformChunks(QList<PRS1DataChunk *>
     for (int i=0; i < allchunks.size(); ++i) {
         chunk = allchunks.at(i);
         
+        // Log mismatched waveform session IDs
+        QFileInfo fi(chunk->m_path);
+        bool numeric;
+        QString session_s = fi.fileName().section(".", 0, -2);
+        qint32 sid = session_s.toInt(&numeric, m_sessionid_base);
+        if (!numeric || sid != chunk->sessionid) {
+            qWarning() << chunk->m_path << "@" << chunk->m_filepos << "session ID mismatch:" << chunk->sessionid;
+        }
+
         if (lastchunk != nullptr) {
-            // Waveform files shouldn't contain multiple sessions
+            // A handful of 960P waveform files have been observed to have multiple sessions.
+            //
+            // This breaks the current approach of deferring waveform parsing until the (multithreaded)
+            // import, since each session is in a separate import task and could be in a separate
+            // thread, or already imported by the time it is discovered that this file contains
+            // more than one session.
+            //
+            // For now, we just dump the chunks that don't belong to the session currently
+            // being imported in this thread, since this happens so rarely.
+            //
+            // TODO: Rework the import process to handle waveform data after compliance/summary/
+            // events (since we're no longer inferring session information from it) and add it to the
+            // newly imported sessions.
             if (lastchunk->sessionid != chunk->sessionid) {
-                qWarning() << "lastchunk->sessionid != chunk->sessionid in PRS1Loader::CoalesceWaveformChunks()";
+                qWarning() << chunk->m_path << "@" << chunk->m_filepos
+                    << "session ID" << lastchunk->sessionid << "->" << chunk->sessionid
+                    << ", skipping" << allchunks.size() - i << "remaining chunks";
                 // Free any remaining chunks
                 for (int j=i; j < allchunks.size(); ++j) {
                     chunk = allchunks.at(j);
@@ -7180,8 +7207,20 @@ QList<PRS1DataChunk *> PRS1Import::CoalesceWaveformChunks(QList<PRS1DataChunk *>
         }
         for (int n=0; n < num; n++) {
             int interleave = chunk->waveformInfo.at(n).interleave;
-            if (interleave != 5) {
-                qDebug() << chunk->m_path << "interleave?" << interleave;
+            switch (chunk->ext) {
+                case 5:  // flow data, 5 samples per second
+                    if (interleave != 5) {
+                        qDebug() << chunk->m_path << "interleave?" << interleave;
+                    }
+                    break;
+                case 6:  // oximetry, 1 sample per second
+                    if (interleave != 1) {
+                        qDebug() << chunk->m_path << "interleave?" << interleave;
+                    }
+                    break;
+                default:
+                    qWarning() << chunk->m_path << "unknown waveform?" << chunk->ext;
+                    break;
             }
         }
         
@@ -7200,6 +7239,7 @@ bool PRS1Import::ParseOximetry()
     for (int i=0; i < size; ++i) {
         PRS1DataChunk * oxi = oximetry.at(i);
         int num = oxi->waveformInfo.size();
+        CHECK_VALUE(num, 2);
 
         int size = oxi->m_data.size();
         if (size == 0) {
@@ -7625,19 +7665,6 @@ PRS1DataChunk* PRS1DataChunk::ParseNext(QFile & f)
             break;
         }
 
-        // Log mismatched waveform session IDs
-        if (chunk->htype == PRS1_HTYPE_INTERVAL) {
-            QFileInfo fi(f);
-            bool numeric;
-            int sessionid_base = (chunk->fileVersion == 2 ? 10 : 16);
-            if (chunk->family == 3 && chunk->familyVersion >= 3) sessionid_base = 16;
-            QString session_s = fi.fileName().section(".", 0, -2);
-            qint32 sid = session_s.toInt(&numeric, sessionid_base);
-            if (!numeric || sid != chunk->sessionid) {
-                qWarning() << chunk->m_path << chunk->sessionid << "session ID mismatch";
-            }
-        }
-        
         // Read the block's data and calculate the block CRC.
         ok = chunk->ReadData(f);
         if (!ok) {
@@ -7646,8 +7673,15 @@ PRS1DataChunk* PRS1DataChunk::ParseNext(QFile & f)
         
         // Make sure the calculated CRC over the entire chunk (header and data) matches the stored CRC.
         if (chunk->calcCrc != chunk->storedCrc) {
-            // corrupt data block.. bleh..
+            // Correupt data block, warn about it.
             qWarning() << chunk->m_path << "@" << chunk->m_filepos << "block CRC calc" << hex << chunk->calcCrc << "!= stored" << hex << chunk->storedCrc;
+            
+            // TODO: When this happens, it's usually because the chunk was truncated and another chunk header
+            // exists within the blockSize bytes. In theory it should be possible to rewing and resync by
+            // looking for another chunk header with the same fileVersion, htype, family, familyVersion, and
+            // ext (blockSize and other fields could vary).
+            //
+            // But this is quite rare, so for now we bail on the rest of the file.
             break;
         }
 
