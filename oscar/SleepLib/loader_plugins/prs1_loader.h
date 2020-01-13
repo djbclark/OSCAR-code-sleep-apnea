@@ -165,16 +165,19 @@ public:
     //! \brief Parse a single data chunk from a .001 file containing summary data for a family 5 ASV family version 3 machine
     bool ParseSummaryF5V3(void);
 
-    //! \brief Parse a flex setting byte from a .000 or .001 containing compliance/summary data
-    void ParseFlexSetting(quint8 flex, int prs1mode);
+    //! \brief Parse a flex setting byte from a .000 or .001 containing compliance/summary data for CPAP/APAP family versions 2, 3, or 4
+    void ParseFlexSettingF0V234(quint8 flex, int prs1mode);
     
-    //! \brief Parse an humidifier setting byte from a .000 or .001 containing compliance/summary data for fileversion 2 machines: F0V23, F5V012, and maybe others
-    void ParseHumidifierSettingV2(int humid, bool supportsHeatedTubing=true);
+    //! \brief Parse a flex setting byte from a .000 or .001 containing compliance/summary data for ASV family versions 0, 1, or 2
+    void ParseFlexSettingF5V012(quint8 flex, int prs1mode);
+    
+    //! \brief Parse an humidifier setting byte from a .000 or .001 containing compliance/summary data for original System One (50-Series) machines: F0V23 and F5V0
+    void ParseHumidifierSetting50Series(int humid, bool add_setting=false);
 
-    //! \brief Parse an humidifier setting byte from a .000 or .001 containing compliance/summary data for F0V4 and F5V012 machines and maybe others
-    void ParseHumidifierSettingF0V4(unsigned char humid1, unsigned char humid2, bool add_setting=false);
+    //! \brief Parse an humidifier setting byte from a .000 or .001 containing compliance/summary data for F0V4 and F5V012 (60-Series) machines
+    void ParseHumidifierSetting60Series(unsigned char humid1, unsigned char humid2, bool add_setting=false);
 
-    //! \brief Parse an humidifier setting byte from a .000 or .001 containing compliance/summary data for F3V3 machines and maybe others
+    //! \brief Parse an humidifier setting byte from a .000 or .001 containing compliance/summary data for F3V3 machines (differs from other 60-Series machines)
     void ParseHumidifierSettingF3V3(unsigned char humid1, unsigned char humid2, bool add_setting=false);
 
     //! \brief Parse humidifier setting bytes from a .000 or .001 containing compliance/summary data for fileversion 3 machines
