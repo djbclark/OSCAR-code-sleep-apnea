@@ -1,6 +1,6 @@
 /* Statistics Report Generator Implementation
  *
- * Copyright (c) 2019 The OSCAR Team
+ * Copyright (c) 2019-2020 The OSCAR Team
  * Copyright (c) 2011-2018 Mark Watkins <mark@jedimark.net>
  *
  * This file is subject to the terms and conditions of the GNU General Public
@@ -22,6 +22,7 @@
 #include "statistics.h"
 #include "cprogressbar.h"
 #include "SleepLib/common.h"
+#include "version.h"
 
 extern MainWindow *mainwin;
 
@@ -718,8 +719,8 @@ QString Statistics::generateFooter(bool showinfo)
     if (showinfo) {
         html += "<hr><div align=center><font size='-1'><i>";
         QDateTime timestamp = QDateTime::currentDateTime();
-        html += tr("This report was prepared on %1 by OSCAR v%2").arg(timestamp.toString(MedDateFormat + " hh:mm"))
-                                                                     .arg(ReleaseStatus == "r" ? ShortVersionString : VersionString + " (" + gitRevision() + ")")
+        html += tr("This report was prepared on %1 by OSCAR %2").arg(timestamp.toString(MedDateFormat + " hh:mm"))
+                                                                     .arg(getVersion())
                 + "<br/>"
                 + tr("OSCAR is free open-source CPAP report software");
         html += "</i></font></div>";

@@ -19,6 +19,7 @@
 #include "statistics.h"
 #include "mainwindow.h"
 #include "newprofile.h"
+#include "version.h"
 
 extern MainWindow * mainwin;
 
@@ -55,7 +56,7 @@ ProfileSelector::ProfileSelector(QWidget *parent) :
     showDiskUsage = false;  // in case I want to preference it later
     on_diskSpaceInfo_linkActivated(showDiskUsage ? "show" : "hide");
 
-    ui->versionLabel->setText(VersionString);
+    ui->versionLabel->setText("");
     ui->diskSpaceInfo->setVisible(false);
 
     QItemSelectionModel * sm = ui->profileView->selectionModel();

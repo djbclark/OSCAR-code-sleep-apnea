@@ -1,5 +1,6 @@
-﻿/* OSCAR MainWindow Implementation
+/* OSCAR MainWindow Implementation
  *
+ * Copyright (c) 2020 The OSCAR Team
  * Copyright (c) 2011-2018 Mark Watkins <mark@jedimark.net>
  *
  * This file is subject to the terms and conditions of the GNU General Public
@@ -55,7 +56,6 @@
 #include "UpdaterWindow.h"
 #include "SleepLib/calcs.h"
 #include "SleepLib/progressdialog.h"
-#include "version.h"
 
 #include "reports.h"
 #include "statistics.h"
@@ -94,7 +94,7 @@ MainWindow::MainWindow(QWidget *parent) :
         // seems to need the systray menu for notifications to work
         systraymenu = new QMenu(this);
         systray->setContextMenu(systraymenu);
-        QAction *a = systraymenu->addAction(STR_TR_OSCAR + " v" + VersionString);
+        QAction *a = systraymenu->addAction(STR_TR_OSCAR + " " + getVersion().displayString());
         a->setEnabled(false);
         systraymenu->addSeparator();
         systraymenu->addAction(tr("&About"), this, SLOT(on_action_About_triggered()));
@@ -113,11 +113,19 @@ MainWindow::MainWindow(QWidget *parent) :
 
 bool setupRunning = false;
 
+QString MainWindow::getMainWindowTitle()
+{
+    QString title = STR_TR_OSCAR + " " + getVersion().displayString();
+#ifdef BROKEN_OPENGL_BUILD
+    title += " ["+CSTR_GFX_BrokenGL+"]";
+#endif
+    return title;
+}
+
 void MainWindow::SetupGUI()
 {
     setupRunning = true;
-    QString version = getBranchVersion();
-    setWindowTitle(STR_TR_OSCAR + QString(" %1").arg(version));
+    setWindowTitle(getMainWindowTitle());
 
 #ifdef Q_OS_MAC
     ui->action_About->setMenuRole(QAction::ApplicationSpecificRole);
@@ -317,7 +325,7 @@ void MainWindow::EnableTabs(bool b)
 void MainWindow::Notify(QString s, QString title, int ms)
 {
     if (title.isEmpty()) {
-        title = tr("%1 %2").arg(STR_TR_OSCAR).arg(STR_TR_AppVersion);
+        title = STR_TR_OSCAR + " " + getVersion().displayString();
     }
     if (systray) {
         QString msg = s;
@@ -527,7 +535,7 @@ bool MainWindow::OpenProfile(QString profileName, bool skippassword)
     PopulatePurgeMenu();
 
     AppSetting->setProfileName(p_profile->user->userName());
-    setWindowTitle(STR_TR_OSCAR + QString(" %1 (" + tr("Profile") + ": %2)").arg(getBranchVersion()).arg(AppSetting->profileName()));
+    setWindowTitle(tr("%1 (Profile: %2)").arg(getMainWindowTitle()).arg(AppSetting->profileName()));
 
     QList<Machine *> oximachines = p_profile->GetMachines(MT_OXIMETER);                // Machines of any type except Journal
     QList<Machine *> posmachines = p_profile->GetMachines(MT_POSITION);
@@ -2560,7 +2568,7 @@ void MainWindow::on_actionReport_a_Bug_triggered()
 //    QSettings settings;
 //    QString language = settings.value(LangSetting).toString();
 //
-//    QDesktopServices::openUrl(QUrl(QString("https://sleepyhead.jedimark.net/report_bugs.php?lang=%1&version=%2&platform=%3").arg(language).arg(VersionString).arg(PlatformString)));
+//    QDesktopServices::openUrl(QUrl(QString("https://sleepyhead.jedimark.net/report_bugs.php?lang=%1&version=%2&platform=%3").arg(language).arg(getVersion()).arg(PlatformString)));
     QMessageBox::information(nullptr, STR_MessageBox_Error, tr("Reporting issues is not yet implemented"));
 }
 
