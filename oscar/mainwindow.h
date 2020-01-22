@@ -332,6 +332,10 @@ class MainWindow : public QMainWindow
 
     void on_mainsplitter_splitterMoved(int pos, int index);
 
+    void on_actionCreate_Card_zip_triggered();
+
+    void on_actionCreate_OSCAR_Data_zip_triggered();
+
     void on_actionReport_a_Bug_triggered();
 
     void on_actionSystem_Information_triggered();
@@ -352,6 +356,8 @@ private:
     void importCPAPBackups();
     void finishCPAPImport();
     QList<ImportPath> detectCPAPCards();
+    QList<ImportPath> selectCPAPDataCards(const QString & prompt);
+    void importCPAPDataCards(const QList<ImportPath> & datacards);
 
 //    QString getWelcomeHTML();
     void FreeSessions();

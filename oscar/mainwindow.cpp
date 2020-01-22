@@ -59,6 +59,7 @@
 
 #include "reports.h"
 #include "statistics.h"
+#include "zip.h"
 
 #if QT_VERSION >= QT_VERSION_CHECK(5,4,0)
 #include <QOpenGLFunctions>
@@ -246,6 +247,8 @@ void MainWindow::SetupGUI()
 
     ui->actionChange_Data_Folder->setVisible(false);
     ui->action_Frequently_Asked_Questions->setVisible(false);
+    ui->actionReport_a_Bug->setVisible(false);  // remove this once we actually implement it
+    ui->actionExport_Review->setVisible(false);  // remove this once we actually implement it
 
 #ifndef helpless
     help = new Help(this);
@@ -905,11 +908,22 @@ void MainWindow::on_action_Import_Data_triggered()
     ui->tabWidget->setCurrentWidget(welcome);
     QApplication::processEvents();
 
+    QList<ImportPath> datacards = selectCPAPDataCards(tr("Would you like to import from this location?"));
+    if (datacards.size() > 0) {
+        importCPAPDataCards(datacards);
+    }
+
+    in_import=false;
+}
+
+
+QList<ImportPath> MainWindow::selectCPAPDataCards(const QString & prompt)
+{
     QList<ImportPath> datacards = detectCPAPCards();
 
     if (importScanCancelled) {
-        in_import = false;
-        return;
+        datacards.clear();
+        return datacards;
     }
 
     QList<MachineLoader *>loaders = GetLoaders(MT_CPAP);
@@ -920,6 +934,8 @@ void MainWindow::on_action_Import_Data_triggered()
 
     bool asknew = false;
 
+    // TODO: This should either iterate over all detected cards and prompt for each, or it should only
+    // provide the one confirmed card in the list.
     if (datacards.size() > 0) {
         MachineInfo info = datacards[0].loader->PeekInfo(datacards[0].path);
         QString infostr;
@@ -933,7 +949,7 @@ void MainWindow::on_action_Import_Data_triggered()
         if (!p_profile->cpap->autoImport()) {
             QMessageBox mbox(QMessageBox::NoIcon,
                 tr("CPAP Data Located"), infostr+"\n\n"+QDir::toNativeSeparators(datacards[0].path)+"\n\n"+
-                tr("Would you like to import from this location?"),
+                prompt,
                 QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel, this);
             mbox.setDefaultButton(QMessageBox::Yes);
             mbox.setButtonText(QMessageBox::No, tr("Specify"));
@@ -946,8 +962,8 @@ void MainWindow::on_action_Import_Data_triggered()
 
             if (res == QMessageBox::Cancel) {
                 // Give the communal progress bar back
-                in_import=false;
-                return;
+                datacards.clear();
+                return datacards;
             } else if (res == QMessageBox::No) {
                 //waitmsg->setText(tr("Please wait, launching file dialog..."));
                 datacards.clear();
@@ -959,9 +975,14 @@ void MainWindow::on_action_Import_Data_triggered()
         asknew = true;
     }
 
+    // TODO: Get rid of the reminder and instead validate the user's selection (using the loader detection
+    // below) and loop until the user either cancels or selects a valid folder.
+    //
+    // It doesn't look like there's any way to implement such a programmatic filter within the file
+    // selection dialog without resorting to a non-native dialog.
     if (asknew) {
        // popup.show();
-        mainwin->Notify(tr("Please remember to point the importer at the root folder or drive letter of your data-card, and not a subfolder."),
+        mainwin->Notify(tr("Please remember to select the root folder or drive letter of your data card, and not a folder inside it."),
                         tr("Import Reminder"),8000);
 
         QFileDialog w(this);
@@ -970,6 +991,7 @@ void MainWindow::on_action_Import_Data_triggered()
         if (p_profile->contains(STR_PREF_LastCPAPPath)) {
             folder = (*p_profile)[STR_PREF_LastCPAPPath].toString();
         } else {
+            // TODO: Is a writable path really the best place to direct the user to find their SD card data?
             folder = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
         }
 
@@ -1004,9 +1026,8 @@ void MainWindow::on_action_Import_Data_triggered()
 //#endif
 
         if (w.exec() != QDialog::Accepted) {
-            in_import=false;
-
-            return;
+            datacards.clear();
+            return datacards;
         }
 
 
@@ -1019,7 +1040,13 @@ void MainWindow::on_action_Import_Data_triggered()
             }
         }
     }
+    
+    return datacards;
+}
 
+
+void MainWindow::importCPAPDataCards(const QList<ImportPath> & datacards)
+{
     bool newdata = false;
 
 //    QStringList goodlocations;
@@ -1072,9 +1099,8 @@ void MainWindow::on_action_Import_Data_triggered()
 
     prog->close();
     prog->deleteLater();
-    in_import=false;
-
 }
+
 
 QMenu *MainWindow::CreateMenu(QString title)
 {
@@ -2559,6 +2585,137 @@ void MainWindow::on_actionExport_Review_triggered()
 void MainWindow::on_mainsplitter_splitterMoved(int, int)
 {
     AppSetting->setRightPanelWidth(ui->mainsplitter->sizes()[1]);
+}
+
+void MainWindow::on_actionCreate_Card_zip_triggered()
+{
+    QList<ImportPath> datacards = selectCPAPDataCards(tr("Would you like to archive this card?"));
+
+    for (auto & datacard : datacards) {
+        QString cardPath = QDir(datacard.path).canonicalPath();
+        QString filename;
+        
+        // Loop until a valid folder is selected or the user cancels. Disallow the SD card itself!
+        while (true) {
+            // Note: macOS ignores this and points to OSCAR's most recently used directory for saving.
+            QString folder = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
+            
+            MachineInfo info = datacard.loader->PeekInfo(datacard.path);
+            QString infostr;
+            if (!info.modelnumber.isEmpty()) {
+                infostr = datacard.loader->loaderName() + "-" + info.modelnumber + "-" +info.serial;
+            } else {
+                infostr = datacard.loader->loaderName();
+            }
+            folder += QDir::separator() + infostr + ".zip";
+
+            filename = QFileDialog::getSaveFileName(this, tr("Choose where to save archive"), folder, tr("ZIP files (*.zip)"));
+
+            if (filename.isEmpty()) {
+                return;  // aborted
+            }
+            
+            // Try again if the selected filename is within the SD card itself.
+            QString selectedPath = QFileInfo(filename).dir().canonicalPath();
+            if (selectedPath.startsWith(cardPath)) {
+                if (QMessageBox::warning(nullptr, STR_MessageBox_Error,
+                        QObject::tr("Please select a location for your archive other than the data card itself!"),
+                        QMessageBox::Ok)) {
+                    continue;
+                }
+            }
+
+            break;
+        }
+
+        if (!filename.toLower().endsWith(".zip")) {
+            filename += ".zip";
+        }
+        
+        qDebug() << "Create zip of SD card:" << cardPath;
+
+        ZipFile z;
+        bool ok = z.Open(filename);
+        if (ok) {
+            ProgressDialog * prog = new ProgressDialog(this);
+            prog->setMessage(tr("Creating archive..."));
+            ok = z.AddDirectory(cardPath, prog);
+            z.Close();
+        } else {
+            qWarning() << "Unable to open" << filename;
+        }
+        if (!ok) {
+            QMessageBox::warning(nullptr, STR_MessageBox_Error,
+                QObject::tr("Unable to create archive!"),
+                QMessageBox::Ok);
+        }
+    }
+}
+
+void MainWindow::on_actionCreate_OSCAR_Data_zip_triggered()
+{
+    QString folder;
+
+    // Note: macOS ignores this and points to OSCAR's most recently used directory for saving.
+    folder = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
+
+    folder += QDir::separator() + STR_AppData + ".zip";
+
+    QString filename = QFileDialog::getSaveFileName(this, tr("Choose where to save archive"), folder, tr("ZIP files (*.zip)"));
+
+    if (filename.isEmpty()) {
+        return;  // aborted
+    }
+
+    if (!filename.toLower().endsWith(".zip")) {
+        filename += ".zip";
+    }
+    
+    qDebug() << "Create zip of OSCAR data folder:" << filename;
+
+    QDir oscarData(GetAppData());
+    QFile debugLog(oscarData.canonicalPath() + QDir::separator() + "debuglog.txt");
+
+    ZipFile z;
+    bool ok = z.Open(filename);
+    if (ok) {
+        ProgressDialog * prog = new ProgressDialog(this);
+        prog->setMessage(tr("Calculating size..."));
+        prog->setWindowModality(Qt::ApplicationModal);
+        prog->open();
+
+        // Build the list of files and exclude any existing debug log.
+        FileQueue files;
+        files.AddDirectory(oscarData.canonicalPath(), oscarData.dirName());
+        files.Remove(debugLog.fileName());
+
+        prog->setMessage(tr("Creating archive..."));
+
+        // Create the zip.
+        ok = z.AddFiles(files, prog);
+        if (ok && z.aborted() == false) {
+            // Update the debug log and add it last.
+            ok = debugLog.open(QIODevice::WriteOnly);
+            if (ok) {
+                debugLog.write(ui->logText->toPlainText().toLocal8Bit().data());
+                debugLog.close();
+                QString debugLogName = oscarData.dirName() + QDir::separator() + QFileInfo(debugLog).fileName();
+                ok = z.AddFile(debugLog.fileName(), debugLogName);
+                if (!ok) {
+                    qWarning() << "Unable to add debug log to archive!";
+                }
+            }
+        }
+
+        z.Close();
+    } else {
+        qWarning() << "Unable to open" << filename;
+    }
+    if (!ok) {
+        QMessageBox::warning(nullptr, STR_MessageBox_Error,
+            QObject::tr("Unable to create archive!"),
+            QMessageBox::Ok);
+    }
 }
 
 #include "translation.h"
