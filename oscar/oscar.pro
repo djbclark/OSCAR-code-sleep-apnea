@@ -292,6 +292,7 @@ SOURCES += \
     SleepLib/loader_plugins/prs1_loader.cpp \
     SleepLib/loader_plugins/resmed_loader.cpp \
     SleepLib/loader_plugins/somnopose_loader.cpp \
+    SleepLib/loader_plugins/viatom_loader.cpp \
     SleepLib/loader_plugins/zeo_loader.cpp \
     zip.cpp \
     miniz.c \
@@ -366,6 +367,7 @@ HEADERS  += \
     SleepLib/loader_plugins/prs1_loader.h \
     SleepLib/loader_plugins/resmed_loader.h \
     SleepLib/loader_plugins/somnopose_loader.h \
+    SleepLib/loader_plugins/viatom_loader.h \
     SleepLib/loader_plugins/zeo_loader.h \
     zip.h \
     miniz.h \
@@ -514,14 +516,16 @@ test {
         tests/prs1tests.cpp \
         tests/resmedtests.cpp \
         tests/sessiontests.cpp \
-        tests/versiontests.cpp
+        tests/versiontests.cpp \
+        tests/viatomtests.cpp
 
     HEADERS += \
         tests/AutoTest.h \
         tests/prs1tests.h \
         tests/resmedtests.h \
         tests/sessiontests.h \
-        tests/versiontests.h
+        tests/versiontests.h \
+        tests/viatomtests.h
 }
 
 macx {

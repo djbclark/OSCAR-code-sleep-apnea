@@ -40,6 +40,7 @@
 // Custom loaders that don't autoscan..
 #include <SleepLib/loader_plugins/zeo_loader.h>
 #include <SleepLib/loader_plugins/somnopose_loader.h>
+#include <SleepLib/loader_plugins/viatom_loader.h>
 
 #ifdef REMSTAR_M_SUPPORT
 #include <SleepLib/loader_plugins/mseries_loader.h>
@@ -2396,6 +2397,32 @@ void MainWindow::on_actionImport_Somnopose_Data_triggered()
 
 }
 
+void MainWindow::on_actionImport_Viatom_Data_triggered()
+{
+    ViatomLoader viatom;
+
+    QFileDialog w;
+    w.setFileMode(QFileDialog::AnyFile);
+    w.setWindowFlags(this->windowFlags() & ~Qt::WindowContextHelpButtonHint);
+    w.setOption(QFileDialog::ShowDirsOnly, false);
+    w.setNameFilters(viatom.getNameFilter());
+
+    if (w.exec() == QFileDialog::Accepted) {
+        QString filename = w.selectedFiles()[0];
+
+        int c = viatom.Open(filename);
+        if (c > 0) {
+            Notify(tr("Imported %1 oximetry session(s) from\n\n%2").arg(c).arg(filename), tr("Import Success"));
+        } else if (c == 0) {
+            Notify(tr("Already up to date with oximetry data at\n\n%1").arg(filename), tr("Up to date"));
+        } else {
+            Notify(tr("Couldn't find any valid data at\n\n%1").arg(filename),tr("Import Problem"));
+        }
+
+        daily->LoadDate(daily->getDate());
+    }
+}
+
 void MainWindow::GenerateStatistics()
 {
     QDate first = p_profile->FirstDay();
@@ -2501,6 +2528,11 @@ void MainWindow::on_actionPurgeCurrentDaysOximetry_triggered()
             sess->Destroy();
             delete sess;
         }
+        // TODO: Fix this. It deletes the underlying session data file in the machine,
+        // but not from the machine's summary cache. This results in future launches
+        // of OSCAR thinking the day has oximetry data, but then it isn't really there.
+        // Currently this is only useful for reimporting a single day, which the purge
+        // permits, and which in turn creates a new data file for that day.
 
 
         if (daily) {
