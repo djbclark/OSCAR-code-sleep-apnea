@@ -258,6 +258,7 @@ static const PRS1TestedModel s_PRS1TestedModels[] = {
     { "400X110", 0, 6, "DreamStation CPAP Pro" },
     { "400X150", 0, 6, "DreamStation CPAP Pro" },
     { "500X110", 0, 6, "DreamStation Auto CPAP" },
+    { "500X130", 0, 6, "DreamStation Auto CPAP" },
     { "500X150", 0, 6, "DreamStation Auto CPAP" },
     { "501X120", 0, 6, "DreamStation Auto CPAP with P-Flex" },
     { "500G110", 0, 6, "DreamStation Go Auto" },
@@ -1006,7 +1007,17 @@ void PRS1Loader::ScanFiles(const QStringList & paths, int sessionid_base, Machin
 
                 SessionID chunk_sid = chunk->sessionid;
                 if (i == 0 && chunk_sid != sid) {  // log session ID mismatches
-                    qDebug() << fi.canonicalFilePath() << chunk_sid;
+                    // This appears to be benign, probably when a card is out of the machine one night and
+                    // then inserted in the morning. It writes out all of the still-in-memory summaries and
+                    // events up through the last night (and no waveform data).
+                    //
+                    // This differs from the first time a card is inserted, because in that case the filename
+                    // *is* equal to the first session contained within it, and then filenames for the
+                    // remaining sessions contained in that file are skipped.
+                    //
+                    // Because the card was present and previous sessions were written with their filenames,
+                    // the first available filename isn't the first session contained in the file.
+                    //qDebug() << fi.canonicalFilePath() << "first session is" << chunk_sid << "instead of" << sid;
                 }
                 if (m->SessionExists(chunk_sid)) {
                     qDebug() << path << "session already imported, skipping" << sid << chunk_sid;
@@ -1135,10 +1146,11 @@ enum PRS1ParsedEventType
     EV_PRS1_TOTLEAK,
     EV_PRS1_LEAK,  // unintentional leak
     EV_PRS1_AUTO_PRESSURE_SET,
-    EV_PRS1_PRESSURE_SET,  // TODO: maybe fold PRESSURE and IPAP into one
+    EV_PRS1_PRESSURE_SET,
     EV_PRS1_IPAP_SET,
     EV_PRS1_EPAP_SET,
-    EV_PRS1_PRESSURE_AVG,  // TODO: maybe fold PRESSURE and IPAP into one
+    EV_PRS1_PRESSURE_AVG,
+    EV_PRS1_FLEX_PRESSURE_AVG,
     EV_PRS1_IPAP_AVG,
     EV_PRS1_IPAPLOW,
     EV_PRS1_IPAPHIGH,
@@ -1539,6 +1551,7 @@ PRS1_PRESSURE_EVENT(PRS1PressureSetEvent, EV_PRS1_PRESSURE_SET);
 PRS1_PRESSURE_EVENT(PRS1IPAPSetEvent, EV_PRS1_IPAP_SET);
 PRS1_PRESSURE_EVENT(PRS1EPAPSetEvent, EV_PRS1_EPAP_SET);
 PRS1_PRESSURE_EVENT(PRS1PressureAverageEvent, EV_PRS1_PRESSURE_AVG);
+PRS1_PRESSURE_EVENT(PRS1FlexPressureAverageEvent, EV_PRS1_FLEX_PRESSURE_AVG);
 PRS1_PRESSURE_EVENT(PRS1IPAPAverageEvent, EV_PRS1_IPAP_AVG);
 PRS1_PRESSURE_EVENT(PRS1IPAPHighEvent, EV_PRS1_IPAPHIGH);
 PRS1_PRESSURE_EVENT(PRS1IPAPLowEvent, EV_PRS1_IPAPLOW);
@@ -1591,6 +1604,10 @@ static const QVector<PRS1ParsedEventType> PRS1OnDemandChannels =
     PRS1PressureSetEvent::TYPE,
     PRS1IPAPSetEvent::TYPE,
     PRS1EPAPSetEvent::TYPE,
+    
+    // Pressure average initialized on-demand for F0 due to the different semantics of bilevel vs. single pressure.
+    PRS1PressureAverageEvent::TYPE,
+    PRS1FlexPressureAverageEvent::TYPE,
 };
 
 // The set of "non-slice" channels are independent of mask-on slices, i.e. they
@@ -1632,7 +1649,8 @@ static const QHash<PRS1ParsedEventType,QVector<ChannelID*>> PRS1ImportChannelMap
     { PRS1PressureSetEvent::TYPE,       { &CPAP_PressureSet } },
     { PRS1IPAPSetEvent::TYPE,           { &CPAP_IPAPSet, &CPAP_PS } },  // PS is calculated from IPAPset and EPAPset when both are supported (F0) TODO: Should this be a separate channel since it's not a 2-minute average?
     { PRS1EPAPSetEvent::TYPE,           { &CPAP_EPAPSet } },            // EPAPset is supported on F5 without any corresponding IPAPset, so it shouldn't always create a PS channel
-    { PRS1PressureAverageEvent::TYPE,   { &CPAP_EPAP } },               // This is effectively EPAP due to Flex reduced pressure in CPAP/APAP mode.
+    { PRS1PressureAverageEvent::TYPE,   { &CPAP_Pressure } },           // This is the time-weighted average pressure in bilevel modes.
+    { PRS1FlexPressureAverageEvent::TYPE, { &CPAP_EPAP } },             // This is effectively EPAP due to Flex reduced pressure in single-pressure modes.
     { PRS1IPAPAverageEvent::TYPE,       { &CPAP_IPAP } },
     { PRS1EPAPAverageEvent::TYPE,       { &CPAP_EPAP, &CPAP_PS } },     // PS is calculated from IPAP and EPAP averages (F3 and F5)
     { PRS1IPAPLowEvent::TYPE,           { &CPAP_IPAPLo } },
@@ -1684,6 +1702,7 @@ static QString parsedEventTypeName(PRS1ParsedEventType t)
         ENUMSTRING(EV_PRS1_IPAP_SET);
         ENUMSTRING(EV_PRS1_EPAP_SET);
         ENUMSTRING(EV_PRS1_PRESSURE_AVG);
+        ENUMSTRING(EV_PRS1_FLEX_PRESSURE_AVG);
         ENUMSTRING(EV_PRS1_IPAP_AVG);
         ENUMSTRING(EV_PRS1_IPAPLOW);
         ENUMSTRING(EV_PRS1_IPAPHIGH);
@@ -2808,6 +2827,7 @@ bool PRS1Import::IsIntervalEvent(PRS1ParsedEvent* e)
     // the previous statistics to the end of the session/slice.)
     switch (e->m_type) {
         case PRS1PressureAverageEvent::TYPE:
+        case PRS1FlexPressureAverageEvent::TYPE:
         case PRS1IPAPAverageEvent::TYPE:
         case PRS1IPAPLowEvent::TYPE:
         case PRS1IPAPHighEvent::TYPE:
@@ -3683,6 +3703,7 @@ static const QVector<PRS1ParsedEventType> ParsedEventsF0V4 = {
     PRS1TotalLeakEvent::TYPE,
     PRS1SnoreEvent::TYPE,
     PRS1PressureAverageEvent::TYPE,
+    PRS1FlexPressureAverageEvent::TYPE,
     PRS1SnoresAtPressureEvent::TYPE,
 };
 
@@ -3708,6 +3729,7 @@ bool PRS1DataChunk::ParseEventsF0V4()
     int code, size;
     int t = 0;
     int elapsed, duration, value;
+    bool is_bilevel = false;
     do {
         code = data[pos++];
 
@@ -3738,6 +3760,7 @@ bool PRS1DataChunk::ParseEventsF0V4()
                 // See notes above on interpolation.
                 this->AddEvent(new PRS1IPAPSetEvent(t, data[pos+1]));
                 this->AddEvent(new PRS1EPAPSetEvent(t, data[pos]));  // EPAP needs to be added second to calculate PS
+                is_bilevel = true;
                 break;
             case 0x03:  // Adjust Opti-Start pressure
                 // On F0V4 this occasionally shows up in the middle of a session.
@@ -3825,13 +3848,18 @@ bool PRS1DataChunk::ParseEventsF0V4()
                 this->AddEvent(new PRS1TotalLeakEvent(t, data[pos]));
                 this->AddEvent(new PRS1SnoreEvent(t, data[pos+1]));
 
-                // TODO: We need to track down what this average means. The original code for F0V4 called it "EPAP / Flex Pressure".
-                // Other parsers treated it as an EPAP event. Most other parsers now treat it as an average pressure (as a guess).
-                // But sample data shows this value around 10.3 cmH2O for a prescribed pressure of 12.0 (C-Flex+ 3). That's too low
-                // for an average pressure over time, but could easily be an average commanded EPAP, per discussions.
-                this->AddEvent(new PRS1PressureAverageEvent(t, data[pos+2]));
-                // TODO: The original code also handled the above differently for different modes. It looks like it ignored the
-                // value for Auto-BiLevel.
+                value = data[pos+2];
+                if (is_bilevel) {
+                    // For bi-level modes, this appears to be the time-weighted average of EPAP and IPAP actually provided.
+                    this->AddEvent(new PRS1PressureAverageEvent(t, value));
+                } else {
+                    // For single-pressure modes, this appears to be the average effective "EPAP" provided by Flex.
+                    //
+                    // Sample data shows this value around 10.3 cmH2O for a prescribed pressure of 12.0 (C-Flex+ 3).
+                    // That's too low for an average pressure over time, but could easily be an average commanded EPAP.
+                    // When flex mode is off, this is exactly the current CPAP set point.
+                    this->AddEvent(new PRS1FlexPressureAverageEvent(t, value));
+                }
                 this->AddEvent(new PRS1IntervalBoundaryEvent(t));
                 break;
             case 0x12:  // Snore count per pressure
@@ -3885,6 +3913,7 @@ static const QVector<PRS1ParsedEventType> ParsedEventsF0V6 = {
     PRS1TotalLeakEvent::TYPE,
     PRS1SnoreEvent::TYPE,
     PRS1PressureAverageEvent::TYPE,
+    PRS1FlexPressureAverageEvent::TYPE,
     PRS1SnoresAtPressureEvent::TYPE,
 };
 
@@ -3912,6 +3941,7 @@ bool PRS1DataChunk::ParseEventsF0V6()
     int code, size;
     int t = 0;
     int elapsed, duration, value;
+    bool is_bilevel = false;
     do {
         code = data[pos++];
         if (!this->hblock.contains(code)) {
@@ -3954,6 +3984,7 @@ bool PRS1DataChunk::ParseEventsF0V6()
                 // See notes above on interpolation.
                 this->AddEvent(new PRS1IPAPSetEvent(t, data[pos+1]));
                 this->AddEvent(new PRS1EPAPSetEvent(t, data[pos]));  // EPAP needs to be added second to calculate PS
+                is_bilevel = true;
                 break;
             case 0x03:  // Auto-CPAP starting pressure
                 // Most of the time this occurs, it's at the start and end of a session with
@@ -4037,13 +4068,19 @@ bool PRS1DataChunk::ParseEventsF0V6()
             case 0x11:  // Statistics
                 this->AddEvent(new PRS1TotalLeakEvent(t, data[pos]));
                 this->AddEvent(new PRS1SnoreEvent(t, data[pos+1]));
-                // Average pressure: this reads lower than the current CPAP set point when
-                // a flex mode is on, and exactly the current CPAP set point when off. For
-                // bi-level it's presumably an average of the actual pressures.
-                //
-                // TODO: See F0V4 comments, this may be average EPAP with pressure relief.
-                // We should look carefully at what that means for bilevel, both fixed and auto.
-                this->AddEvent(new PRS1PressureAverageEvent(t, data[pos+2]));
+
+                value = data[pos+2];
+                if (is_bilevel) {
+                    // For bi-level modes, this appears to be the time-weighted average of EPAP and IPAP actually provided.
+                    this->AddEvent(new PRS1PressureAverageEvent(t, value));
+                } else {
+                    // For single-pressure modes, this appears to be the average effective "EPAP" provided by Flex.
+                    //
+                    // Sample data shows this value around 10.3 cmH2O for a prescribed pressure of 12.0 (C-Flex+ 3).
+                    // That's too low for an average pressure over time, but could easily be an average commanded EPAP.
+                    // When flex mode is off, this is exactly the current CPAP set point.
+                    this->AddEvent(new PRS1FlexPressureAverageEvent(t, value));
+                }
                 this->AddEvent(new PRS1IntervalBoundaryEvent(t));
                 break;
             case 0x12:  // Snore count per pressure
@@ -4202,7 +4239,7 @@ bool PRS1Import::ImportCompliance()
                 CHECK_VALUE(e->m_value, 0);
                 break;
             case PRS1_SETTING_HOSE_DIAMETER:
-                session->settings[PRS1_HoseDiam] = QObject::tr("%1mm").arg(e->m_value);
+                session->settings[PRS1_HoseDiam] = e->m_value;
                 break;
             case PRS1_SETTING_AUTO_ON:
                 session->settings[PRS1_AutoOn] = (bool) e->m_value;
@@ -4970,15 +5007,15 @@ bool PRS1DataChunk::ParseSummaryF0V4(void)
                 break;
             case 8:  // CPAP-Check related, follows Mask On in CPAP-Check mode
                 tt += data[pos] | (data[pos+1] << 8);  // This adds to the total duration (otherwise it won't match report)
-                CHECK_VALUES(data[pos+2], 0, 79);  // probably 16-bit value
+                //CHECK_VALUES(data[pos+2], 0, 79);  // probably 16-bit value, sometimes matches OA + H + FL + VS + RE?
                 CHECK_VALUE(data[pos+3], 0);
-                CHECK_VALUES(data[pos+4], 0, 10);  // probably 16-bit value
+                //CHECK_VALUES(data[pos+4], 0, 10);  // probably 16-bit value
                 CHECK_VALUE(data[pos+5], 0);
-                CHECK_VALUES(data[pos+6], 0, 79);  // probably 16-bit value
+                //CHECK_VALUES(data[pos+6], 0, 79);  // probably 16-bit value, usually the same as +2, but not always?
                 CHECK_VALUE(data[pos+7], 0);
-                CHECK_VALUES(data[pos+8], 0, 10);  // probably 16-bit value
+                //CHECK_VALUES(data[pos+8], 0, 10);  // probably 16-bit value
                 CHECK_VALUE(data[pos+9], 0);
-                CHECK_VALUES(data[pos+0xa], 0, 4);  // or 0? 44 when changed pressure mid-session?
+                //CHECK_VALUES(data[pos+0xa], 0, 4);  // or 0? 44 when changed pressure mid-session?
                 break;
             default:
                 UNEXPECTED_VALUE(code, "known slice code");
@@ -5994,6 +6031,7 @@ bool PRS1DataChunk::ParseSummaryF5V012(void)
 // 0x8A = C-Flex+ 2 (CPAP mode)
 // 0x8A = C-Flex+ 2, lock off (CPAP-Check mode)
 // 0x8A = A-Flex 2, lock off (Auto-Trial mode)
+// 0xCB = C-Flex+ 3 (CPAP-Check mode), C-Flex+ Lock on
 //
 // 0x8A = A-Flex 1 (AutoCPAP mode)
 // 0x8B = C-Flex+ 3 (CPAP mode)
@@ -6008,11 +6046,14 @@ void PRS1DataChunk::ParseFlexSettingF0V234(quint8 flex, int cpapmode)
 {
     FlexMode flexmode = FLEX_None;
     bool enabled  = (flex & 0x80) != 0;
+    bool lock     = (flex & 0x40) != 0;
     bool risetime = (flex & 0x10) != 0;
     bool plusmode = (flex & 0x08) != 0;
     int flexlevel = flex & 0x03;
-    // the original code suggested 0x40 was split (flex/flex+ then none), but we haven't seen any data with that yet
-    if (flex & (0x40 | 0x20 | 0x04)) UNEXPECTED_VALUE(flex, "known bits");
+    if (flex & (0x20 | 0x04)) UNEXPECTED_VALUE(flex, "known bits");
+    if (this->familyVersion == 2) {
+        CHECK_VALUE(lock, false);  // haven't observed this yet
+    }
 
     if (enabled) {
         if (flexlevel < 1) UNEXPECTED_VALUE(flexlevel, "!= 0");
@@ -6059,6 +6100,7 @@ void PRS1DataChunk::ParseFlexSettingF0V234(quint8 flex, int cpapmode)
     if (flexmode != FLEX_None) {
         this->AddEvent(new PRS1ParsedSettingEvent(PRS1_SETTING_FLEX_LEVEL, flexlevel));
     }
+    // TODO: add flex mode lock
 }
 
 
@@ -6449,7 +6491,7 @@ void PRS1DataChunk::ParseHumidifierSettingV3(unsigned char byte1, unsigned char 
     // Check for previously unseen data that we expect to be normal:
     if (family == 0) {
         if (tubepresent) {
-            if (tubehumidlevel == 1) UNEXPECTED_VALUE(tubehumidlevel, "!= 1");
+            // All tube temperature and humidity levels seen.
         }
     } else if (family == 5) {
         if (tubepresent) {
@@ -6532,9 +6574,10 @@ bool PRS1DataChunk::ParseSettingsF0V6(const unsigned char* data, int size)
                     CHECK_VALUES(data[pos], 1, 2);  // 1 when EZ-Start is enabled? 2 when Auto-Trial? 3 when Auto-Trial is off or Opti-Start isn't off?
                 }
                 if (len == 2) {  // 400G, 500G has extra byte
-                    if (data[pos+1]) {
+                    if (data[pos+1] != 0 && data[pos+1] != 0x80) {
                         // 0x20 seen with Opti-Start enabled
                         // 0x30 seen with both Opti-Start and EZ-Start enabled on 500X110
+                        // 0x80 seen with EZ-Start and CPAP-Check+ on 500X150
                         CHECK_VALUES(data[pos+1], 0x20, 0x30);
                     }
                 }
@@ -6632,7 +6675,22 @@ bool PRS1DataChunk::ParseSettingsF0V6(const unsigned char* data, int size)
                     flexmode = FLEX_None;
                     break;
                 case 0x80:
-                    flexmode = FLEX_CFlex;
+                    switch (cpapmode) {
+                        case PRS1_MODE_CPAP:
+                        case PRS1_MODE_CPAPCHECK:
+                        case PRS1_MODE_AUTOCPAP:
+                        //case PRS1_MODE_AUTOTRIAL:
+                            flexmode = FLEX_CFlex;
+                            break;
+                        case PRS1_MODE_BILEVEL:
+                        case PRS1_MODE_AUTOBILEVEL:
+                            flexmode = FLEX_BiFlex;
+                            break;
+                        default:
+                            HEX(flexmode);
+                            UNEXPECTED_VALUE(cpapmode, "untested mode");
+                            break;
+                    }
                     break;
                 case 0x90:  // C-Flex+ or A-Flex, depending on machine mode
                     switch (cpapmode) {
@@ -6694,8 +6752,8 @@ bool PRS1DataChunk::ParseSettingsF0V6(const unsigned char* data, int size)
                 break;
             case 0x40:  // new to 400G, also seen on 500X110, alternate tubing type? appears after 0x39 and before 0x3c
                 CHECK_VALUE(len, 1);
-                if (data[pos] != 3) {
-                    CHECK_VALUES(data[pos], 1, 2);  // 1 = 15mm, 2 = 15HT, 3 = 12mm
+                if (data[pos] != 3 && data[pos] != 0) {
+                    CHECK_VALUES(data[pos], 1, 2);  // 0 = 22mm, 1 = 15mm, 2 = 15HT, 3 = 12mm
                 }
                 this->ParseTubingTypeV3(data[pos]);
                 break;
@@ -7404,7 +7462,7 @@ bool PRS1Import::ImportSummary()
                 session->settings[PRS1_SysOneResistStat] = (bool) e->m_value;
                 break;
             case PRS1_SETTING_HOSE_DIAMETER:
-                session->settings[PRS1_HoseDiam] = QObject::tr("%1mm").arg(e->m_value);
+                session->settings[PRS1_HoseDiam] = e->m_value;
                 break;
             case PRS1_SETTING_AUTO_ON:
                 session->settings[PRS1_AutoOn] = (bool) e->m_value;
@@ -7714,6 +7772,7 @@ QList<PRS1DataChunk *> PRS1Import::CoalesceWaveformChunks(QList<PRS1DataChunk *>
             qWarning().noquote() << relativePath(chunk->m_path) << "skipping session" << chunk->sessionid << ":"
                 << QDateTime::fromMSecsSinceEpoch(chunk->timestamp*1000).toString() << "older than"
                 << QDateTime::fromMSecsSinceEpoch(ignoreBefore*1000).toString();
+            delete chunk;
             continue;
         }
         coalescedAndFiltered.append(chunk);
@@ -7723,7 +7782,7 @@ QList<PRS1DataChunk *> PRS1Import::CoalesceWaveformChunks(QList<PRS1DataChunk *>
 }
 
 
-bool PRS1Import::ParseOximetry()
+void PRS1Import::ParseOximetry()
 {
     int size = oximetry.size();
 
@@ -7741,6 +7800,9 @@ bool PRS1Import::ParseOximetry()
         qint64 dur = qint64(oxi->duration) * 1000L;
 
         if (num > 1) {
+            CHECK_VALUE(oxi->waveformInfo.at(0).interleave, 1);
+            CHECK_VALUE(oxi->waveformInfo.at(1).interleave, 1);
+            
             // Process interleaved samples
             QVector<QByteArray> data;
             data.resize(num);
@@ -7753,24 +7815,67 @@ bool PRS1Import::ParseOximetry()
                     pos += interleave;
                 }
             } while (pos < size);
+            CHECK_VALUE(data[0].size(), data[1].size());
 
-            if (data[0].size() > 0) {
-                EventList * pulse = session->AddEventList(OXI_Pulse, EVL_Waveform, 1.0, 0.0, 0.0, 0.0, dur / data[0].size());
-                pulse->AddWaveform(ti, (unsigned char *)data[0].data(), data[0].size(), dur);
-            }
+            ImportOximetryChannel(OXI_Pulse, data[0], ti, dur);
 
-            if (data[1].size() > 0) {
-                EventList * spo2 = session->AddEventList(OXI_SPO2, EVL_Waveform, 1.0, 0.0, 0.0, 0.0, dur / data[1].size());
-                spo2->AddWaveform(ti, (unsigned char *)data[1].data(), data[1].size(), dur);
-            }
-
+            ImportOximetryChannel(OXI_SPO2, data[1], ti, dur);
         }
     }
-    return true;
 }
 
 
-bool PRS1Import::ParseWaveforms()
+void PRS1Import::ImportOximetryChannel(ChannelID channel, QByteArray & data, quint64 ti, qint64 dur)
+{
+    if (data.size() == 0)
+        return;
+
+    unsigned char* raw = (unsigned char*) data.data();
+    qint64 step = dur / data.size();
+    CHECK_VALUE(dur % data.size(), 0);
+    
+    bool pending_samples = false;
+    quint64 start_ti;
+    int start_i;
+    
+    // Split eventlist on invalid values (255)
+    for (int i=0; i < data.size(); i++) {
+        unsigned char value = raw[i];
+        bool valid = (value != 255);
+
+        if (valid) {
+            if (pending_samples == false) {
+                pending_samples = true;
+                start_i  = i;
+                start_ti = ti;
+            }
+            
+            if (channel == OXI_Pulse) {
+                if (value > 200) UNEXPECTED_VALUE(value, "<= 200 bpm");
+            } else {
+                if (value > 100) UNEXPECTED_VALUE(value, "<= 100%");
+            }
+        } else {
+            if (pending_samples) {
+                // Create the pending event list
+                EventList* el = session->AddEventList(channel, EVL_Waveform, 1.0, 0.0, 0.0, 0.0, step);
+                el->AddWaveform(start_ti, &raw[start_i], i - start_i, ti - start_ti);
+                pending_samples = false;
+            }
+        }
+        ti += step;
+    }
+
+    if (pending_samples) {
+        // Create the pending event list
+        EventList* el = session->AddEventList(channel, EVL_Waveform, 1.0, 0.0, 0.0, 0.0, step);
+        el->AddWaveform(start_ti, &raw[start_i], data.size() - start_i, ti - start_ti);
+        pending_samples = false;
+    }
+}
+
+
+void PRS1Import::ParseWaveforms()
 {
     int size = waveforms.size();
     quint64 s1, s2;
@@ -7867,8 +7972,6 @@ bool PRS1Import::ParseWaveforms()
     if (discontinuities > 1) {
         qWarning() << session->session() << "multiple discontinuities!" << discontinuities;
     }
-
-    return true;
 }
 
 void PRS1Import::run()
@@ -7952,20 +8055,14 @@ bool PRS1Import::ParseSession(void)
 
         if (!m_wavefiles.isEmpty()) {
             // Parse .005 Waveform files
-            ok = ImportWaveforms();
-            if (!ok) {
-                qWarning() << sessionid << "Error parsing waveforms, proceeding anyway?";
-            }
+            ImportWaveforms();
         }
 
         if (!oxifile.isEmpty()) {
             // Parse .006 Waveform file
             oximetry = loader->ParseFile(oxifile);
             oximetry = CoalesceWaveformChunks(oximetry);
-            ok = ParseOximetry();
-            if (!ok) {
-                qWarning() << sessionid << "Error parsing oximetry, proceeding anyway?";
-            }
+            ParseOximetry();
         }
 
         save = true;
@@ -7975,10 +8072,9 @@ bool PRS1Import::ParseSession(void)
 }
 
 
-bool PRS1Import::ImportWaveforms()
+void PRS1Import::ImportWaveforms()
 {
     QMap<qint64,PRS1DataChunk *> waveform_chunks;
-    bool ok = true;
 
     if (m_wavefiles.count() > 1) {
         qDebug() << session->session() << "Waveform data split across multiple files";
@@ -8014,9 +8110,7 @@ bool PRS1Import::ImportWaveforms()
     }
 
     // Extract raw data into channels.
-    ok = ParseWaveforms();
-    
-    return ok;
+    ParseWaveforms();
 }
 
 
@@ -8067,9 +8161,6 @@ QList<PRS1DataChunk *> PRS1Loader::ParseFile(const QString & path)
 
     int cnt = 0;
 
-    int cruft = 0;
-    int firstsession = 0;
-
     do {
         chunk = PRS1DataChunk::ParseNext(f, this);
         if (chunk == nullptr) {
@@ -8078,44 +8169,21 @@ QList<PRS1DataChunk *> PRS1Loader::ParseFile(const QString & path)
         chunk->SetIndex(cnt);  // for logging/debugging purposes
 
         if (lastchunk != nullptr) {
-            // If there's any mismatch between header information, try and skip the block
-            // This probably isn't the best approach for dealing with block corruption :/
             if ((lastchunk->fileVersion != chunk->fileVersion)
                     || (lastchunk->ext != chunk->ext)
                     || (lastchunk->family != chunk->family)
                     || (lastchunk->familyVersion != chunk->familyVersion)
                     || (lastchunk->htype != chunk->htype)) {
-                qWarning() << path << "unexpected header data, skipping";
-                
-                // TODO: Find a sample of this problem to see if the below approach has any
-                // value, or whether we should just drop the chunk.
-                QByteArray junk = f.read(lastchunk->blockSize - chunk->m_header.size());
-
-                Q_UNUSED(junk)
-                if (lastchunk->ext == 5) {
-                    // The data is random crap
-                    // lastchunk->m_data.append(junk.mid(lastheadersize-16));
-                }
-                ++cruft;
-                // quit after 3 attempts
-                if (cruft > 3) {
-                    qWarning() << path << "too many unexpected headers, bailing";
-                    break;
-                }
-
-                cnt++;
-                delete chunk;
-                continue;
-                // Corrupt header.. skip it.
+                QString message = "*** unexpected change in header data";
+                qWarning() << path << message;
+                LogUnexpectedMessage(message);
+                // There used to be error-recovery code here, written before we checked CRCs.
+                // If we ever encounter data with a valid CRC that triggers the above warnings,
+                // we can then revisit how to handle it.
             }
-        }
-        
-        if (!firstsession) {
-            firstsession = chunk->sessionid;
         }
 
         CHUNKS.append(chunk);
-
         lastchunk = chunk;
         cnt++;
     } while (!f.atEnd());
@@ -8164,7 +8232,7 @@ PRS1DataChunk* PRS1DataChunk::ParseNext(QFile & f, PRS1Loader* loader)
         
         // Make sure the calculated CRC over the entire chunk (header and data) matches the stored CRC.
         if (chunk->calcCrc != chunk->storedCrc) {
-            // Correupt data block, warn about it.
+            // Corrupt data block, warn about it.
             qWarning() << chunk->m_path << "@" << chunk->m_filepos << "block CRC calc" << hex << chunk->calcCrc << "!= stored" << hex << chunk->storedCrc;
             
             // TODO: When this happens, it's usually because the chunk was truncated and another chunk header
@@ -8360,23 +8428,20 @@ bool PRS1DataChunk::ReadWaveformHeader(QFile & f)
 
         // Parse the variable-length waveform information.
         // TODO: move these checks into the parser, after the header checksum has been verified
+        // For now just skip them for the one known sample with a bad checksum.
+        if (this->sessionid == 268962649) return true;
+
         int pos = 0x13;
         for (int i = 0; i < wvfm_signals; ++i) {
             quint8 kind = header[pos];
-            if (kind != i) {  // always seems to range from 0...wvfm_signals-1, alert if not
-                qWarning() << this->m_path << kind << "!=" << i << "waveform kind";
-                //break;  // don't break to avoid changing behavior (for now)
-            }
+            CHECK_VALUE(kind, i);  // always seems to range from 0...wvfm_signals-1, alert if not
             quint16 interleave = header[pos + 1] | header[pos + 2] << 8;  // samples per interval
             if (this->fileVersion == 2) {
                 this->waveformInfo.push_back(PRS1Waveform(interleave, kind));
                 pos += 3;
             } else if (this->fileVersion == 3) {
                 int always_8 = header[pos + 3];  // sample size in bits?
-                if (always_8 != 8) {
-                    qWarning() << this->m_path << always_8 << "!= 8 in waveform header";
-                    //break;  // don't break to avoid changing behavior (for now)
-                }
+                CHECK_VALUE(always_8, 8);
                 this->waveformInfo.push_back(PRS1Waveform(interleave, kind));
                 pos += 4;
             }
@@ -8384,10 +8449,7 @@ bool PRS1DataChunk::ReadWaveformHeader(QFile & f)
         
         // And the trailing byte, whatever it is.
         int always_0 = header[pos];
-        if (always_0 != 0) {
-            qWarning() << this->m_path << always_0 << "!= 0 in waveform header";
-            //break;  // don't break to avoid changing behavior (for now)
-        }
+        CHECK_VALUE(always_0, 0);
        
         ok = true;
     } while (false);
@@ -8480,8 +8542,6 @@ void PRS1Loader::initChannels()
         QObject::tr("PRS1 pressure relief mode."),
         QObject::tr("Flex Mode"),
         "", LOOKUP, Qt::green));
-
-
     chan->addOption(FLEX_None, STR_TR_None);
     chan->addOption(FLEX_CFlex, QObject::tr("C-Flex"));
     chan->addOption(FLEX_CFlexPlus, QObject::tr("C-Flex+"));
@@ -8578,8 +8638,9 @@ void PRS1Loader::initChannels()
         QObject::tr("Diameter of primary CPAP hose"),
         QObject::tr("Hose Diameter"),
         "", LOOKUP, Qt::green));
-    chan->addOption(0, QObject::tr("22mm"));
-    chan->addOption(1, QObject::tr("15mm"));
+    chan->addOption(22, QObject::tr("22mm"));
+    chan->addOption(15, QObject::tr("15mm"));
+    chan->addOption(12, QObject::tr("12mm"));
 
     channel.add(GRP_CPAP, chan = new Channel(PRS1_SysOneResistStat = 0xe108, SETTING,  MT_CPAP,  SESSION,
         "SysOneLock",
@@ -8640,7 +8701,6 @@ void PRS1Loader::initChannels()
         "??",
         STR_UNIT_Seconds,
         DEFAULT,    QColor("#ffe8f0")));
-    qDebug() << channel[PRS1_0E].defaultColor();
     channel.add(GRP_CPAP, new Channel(PRS1_BND = 0x1159, SPAN,  MT_CPAP,   SESSION,
         "PRS1_BND",
         QObject::tr("Breathing Not Detected"),
