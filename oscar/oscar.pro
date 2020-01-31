@@ -286,6 +286,7 @@ SOURCES += \
     SleepLib/schema.cpp \
     SleepLib/session.cpp \
     SleepLib/loader_plugins/cms50_loader.cpp \
+    SleepLib/loader_plugins/dreem_loader.cpp \
     SleepLib/loader_plugins/icon_loader.cpp \
     SleepLib/loader_plugins/intellipap_loader.cpp \
     SleepLib/loader_plugins/mseries_loader.cpp \
@@ -296,6 +297,7 @@ SOURCES += \
     SleepLib/loader_plugins/zeo_loader.cpp \
     zip.cpp \
     miniz.c \
+    csv.cpp \
     translation.cpp \
     statistics.cpp \
     oximeterimport.cpp \
@@ -361,6 +363,7 @@ HEADERS  += \
     SleepLib/schema.h \
     SleepLib/session.h \
     SleepLib/loader_plugins/cms50_loader.h \
+    SleepLib/loader_plugins/dreem_loader.h \
     SleepLib/loader_plugins/icon_loader.h \
     SleepLib/loader_plugins/intellipap_loader.h \
     SleepLib/loader_plugins/mseries_loader.h \
@@ -371,6 +374,7 @@ HEADERS  += \
     SleepLib/loader_plugins/zeo_loader.h \
     zip.h \
     miniz.h \
+    csv.h \
     translation.h \
     statistics.h \
     oximeterimport.h \
@@ -517,7 +521,9 @@ test {
         tests/resmedtests.cpp \
         tests/sessiontests.cpp \
         tests/versiontests.cpp \
-        tests/viatomtests.cpp
+        tests/viatomtests.cpp \
+        tests/dreemtests.cpp \
+        tests/zeotests.cpp
 
     HEADERS += \
         tests/AutoTest.h \
@@ -525,7 +531,9 @@ test {
         tests/resmedtests.h \
         tests/sessiontests.h \
         tests/versiontests.h \
-        tests/viatomtests.h
+        tests/viatomtests.h \
+        tests/dreemtests.h \
+        tests/zeotests.h
 }
 
 macx {

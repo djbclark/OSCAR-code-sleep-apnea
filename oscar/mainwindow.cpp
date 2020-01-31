@@ -39,6 +39,7 @@
 
 // Custom loaders that don't autoscan..
 #include <SleepLib/loader_plugins/zeo_loader.h>
+#include <SleepLib/loader_plugins/dreem_loader.h>
 #include <SleepLib/loader_plugins/somnopose_loader.h>
 #include <SleepLib/loader_plugins/viatom_loader.h>
 
@@ -373,28 +374,40 @@ void MainWindow::PopulatePurgeMenu()
     ui->menuPurge_CPAP_Data->disconnect(ui->menuPurge_CPAP_Data, SIGNAL(triggered(QAction*)), this, SLOT(on_actionPurgeMachine(QAction *)));
     ui->menuPurge_CPAP_Data->clear();
 
+    // Only allow rebuilding for CPAP for now, since that's the only thing that makes backups.
     QList<Machine *> machines = p_profile->GetMachines(MT_CPAP);
     for (int i=0; i < machines.size(); ++i) {
         Machine *mach = machines.at(i);
-        QString name =  mach->brand() + " "+
-                        mach->model() + " "+
-                        mach->serial();
-
-        QAction * action = new QAction(name.replace("&","&&"), ui->menu_Rebuild_CPAP_Data);
-        action->setIconVisibleInMenu(true);
-        action->setIcon(mach->getPixmap());
-        action->setData(mach->loaderName()+":"+mach->serial());
-        ui->menu_Rebuild_CPAP_Data->addAction(action);
-
-        action = new QAction(name.replace("&","&&"), ui->menuPurge_CPAP_Data);
-        action->setIconVisibleInMenu(true);
-        action->setIcon(mach->getPixmap()); //getCPAPIcon(mach->loaderName()));
-        action->setData(mach->loaderName()+":"+mach->serial());
-
-        ui->menuPurge_CPAP_Data->addAction(action);
+        addMachineToMenu(mach, ui->menu_Rebuild_CPAP_Data);
     }
+    
+    // Add any imported machine (except the built-in journal) to the purge menu.
+    machines = p_profile->GetMachines();
+    for (int i=0; i < machines.size(); ++i) {
+        Machine *mach = machines.at(i);
+        if (mach->type() == MT_JOURNAL) {
+            continue;
+        }
+        addMachineToMenu(mach, ui->menuPurge_CPAP_Data);
+    }
+
     ui->menu_Rebuild_CPAP_Data->connect(ui->menu_Rebuild_CPAP_Data, SIGNAL(triggered(QAction*)), this, SLOT(on_actionRebuildCPAP(QAction*)));
     ui->menuPurge_CPAP_Data->connect(ui->menuPurge_CPAP_Data, SIGNAL(triggered(QAction*)), this, SLOT(on_actionPurgeMachine(QAction*)));
+}
+
+void MainWindow::addMachineToMenu(Machine* mach, QMenu* menu)
+{
+    QString name = mach->brand();
+    if (name.isEmpty()) {
+        name = mach->loaderName();
+    }
+    name += " " + mach->model() + " " + mach->serial();
+
+    QAction * action = new QAction(name.replace("&","&&"), menu);
+    action->setIconVisibleInMenu(true);
+    action->setIcon(mach->getPixmap());
+    action->setData(mach->loaderName()+":"+mach->serial());
+    menu->addAction(action);
 }
 
 void MainWindow::firstRunMessage()
@@ -1413,6 +1426,7 @@ void MainWindow::on_oximetryButton_clicked()
     if (p_profile) {
         OximeterImport oxiimp(this);
         oxiimp.exec();
+        PopulatePurgeMenu();
         if (overview) overview->ReloadGraphs();
         if (welcome) welcome->refreshPage();
     }
@@ -1996,7 +2010,7 @@ void MainWindow::on_actionPurgeMachine(QAction *action)
     QString data = action->data().toString();
     QString cls = data.section(":",0,0);
     QString serial = data.section(":", 1);
-    QList<Machine *> machines = p_profile->GetMachines(MT_CPAP);
+    QList<Machine *> machines = p_profile->GetMachines();
     Machine * mach = nullptr;
     for (int i=0; i < machines.size(); ++i) {
         Machine * m = machines.at(i);
@@ -2007,13 +2021,34 @@ void MainWindow::on_actionPurgeMachine(QAction *action)
     }
     if (!mach) return;
 
+    QString machname = mach->brand();
+    if (machname.isEmpty()) {
+        machname = mach->loaderName();
+    }
+    machname += " " + mach->model() + " " + mach->modelnumber();
+    if (!mach->serial().isEmpty()) {
+        machname += QString(" (%1)").arg(mach->serial());
+    }
+
+    QString backupnotice;
+    QString bpath = mach->getBackupPath();
+    bool backups = (dirCount(bpath) > 0) ? true : false;
+    if (backups) {
+        backupnotice = "<p>" + tr("Note as a precaution, the backup folder will be left in place.") + "</p>";
+    } else {
+        backupnotice = "<p>" + tr("OSCAR does not have any backups for this machine!") + "</p>" +
+                       "<p>" + tr("Unless you have made <i>your <b>own</b> backups for ALL of your data for this machine</i>, "
+                                  "<font size=+2>you will lose this machine's data <b>permanently</b>!</font>") + "</p>";
+    }
+
     if (QMessageBox::question(this, STR_MessageBox_Warning, 
             "<p><b>"+STR_MessageBox_Warning+":</b> "  +
             tr("You are about to <font size=+2>obliterate</font> OSCAR's machine database for the following machine:</p>") +
-            "<p>"+mach->brand() + " " + mach->model() + " " + mach->modelnumber() + " (" + mach->serial() + ")" + "</p>" +
-            "<p>"+tr("Note as a precaution, the backup folder will be left in place.")+"</p>"+
-            "<p>"+tr("Are you <b>absolutely sure</b> you want to proceed?")+"</p>", 
+            "<p><font size=+2>" + machname + "</font></p>" +
+            backupnotice+
+            "<p>"+tr("Are you <b>absolutely sure</b> you want to proceed?")+"</p>",
             QMessageBox::Yes | QMessageBox::No, QMessageBox::No) == QMessageBox::Yes) {
+        qDebug() << "Purging" << machname;
         purgeMachine(mach);
     }
 
@@ -2030,14 +2065,14 @@ void MainWindow::purgeMachine(Machine * mach)
         mach->day.clear();
         QDir dir;
         QString path = mach->getDataPath();
-        qDebug() << "path to machine" << path;
         path.chop(1);
+        qDebug() << "path to machine" << path;
 
         p_profile->DelMachine(mach);
         delete mach;
         // remove the directory unless it's got unexpected crap in it..
         bool deleted = false;
-        if (!dir.remove(path)) {
+        if (!dir.rmdir(path)) {
 #ifdef Q_OS_WIN
             wchar_t* directoryPtr = (wchar_t*)path.utf16();
             SetFileAttributes(directoryPtr, GetFileAttributes(directoryPtr) & ~FILE_ATTRIBUTE_READONLY);
@@ -2302,7 +2337,6 @@ void MainWindow::on_actionImport_ZEO_Data_triggered()
     w.setFileMode(QFileDialog::ExistingFiles);
     w.setWindowFlags(this->windowFlags() & ~Qt::WindowContextHelpButtonHint);
     w.setOption(QFileDialog::ShowDirsOnly, false);
-    w.setOption(QFileDialog::DontUseNativeDialog, true);
     w.setNameFilters(QStringList("Zeo CSV File (*.csv)"));
 
     ZEOLoader zeo;
@@ -2310,16 +2344,49 @@ void MainWindow::on_actionImport_ZEO_Data_triggered()
     if (w.exec() == QFileDialog::Accepted) {
         QString filename = w.selectedFiles()[0];
 
-        if (!zeo.OpenFile(filename)) {
-            Notify(tr("There was a problem opening ZEO File: ") + filename);
-            return;
+        qDebug() << "Loading ZEO data from" << filename;
+        int c = zeo.OpenFile(filename);
+        if (c > 0) {
+            Notify(tr("Imported %1 ZEO session(s) from\n\n%2").arg(c).arg(filename), tr("Import Success"));
+            qDebug() << "Imported" << c << "ZEO sessions";
+            PopulatePurgeMenu();
+        } else if (c == 0) {
+            Notify(tr("Already up to date with ZEO data at\n\n%1").arg(filename), tr("Up to date"));
+        } else {
+            Notify(tr("Couldn't find any valid ZEO CSV data at\n\n%1").arg(filename),tr("Import Problem"));
         }
 
-        Notify(tr("Zeo CSV Import complete"));
         daily->LoadDate(daily->getDate());
     }
+}
 
+void MainWindow::on_actionImport_Dreem_Data_triggered()
+{
+    QFileDialog w;
+    w.setFileMode(QFileDialog::ExistingFiles);
+    w.setWindowFlags(this->windowFlags() & ~Qt::WindowContextHelpButtonHint);
+    w.setOption(QFileDialog::ShowDirsOnly, false);
+    w.setNameFilters(QStringList("Dreem CSV File (*.csv)"));
 
+    DreemLoader dreem;
+
+    if (w.exec() == QFileDialog::Accepted) {
+        QString filename = w.selectedFiles()[0];
+
+        qDebug() << "Loading Dreem data from" << filename;
+        int c = dreem.OpenFile(filename);
+        if (c > 0) {
+            Notify(tr("Imported %1 Dreem session(s) from\n\n%2").arg(c).arg(filename), tr("Import Success"));
+            qDebug() << "Imported" << c << "Dreem sessions";
+            PopulatePurgeMenu();
+        } else if (c == 0) {
+            Notify(tr("Already up to date with Dreem data at\n\n%1").arg(filename), tr("Up to date"));
+        } else {
+            Notify(tr("Couldn't find any valid Dreem CSV data at\n\n%1").arg(filename),tr("Import Problem"));
+        }
+
+        daily->LoadDate(daily->getDate());
+    }
 }
 
 void MainWindow::on_actionImport_RemStar_MSeries_Data_triggered()
@@ -2403,6 +2470,7 @@ void MainWindow::on_actionImport_Somnopose_Data_triggered()
         }
 
         Notify(tr("Somnopause Data Import complete"));
+        PopulatePurgeMenu();
         daily->LoadDate(daily->getDate());
     }
 
@@ -2424,6 +2492,7 @@ void MainWindow::on_actionImport_Viatom_Data_triggered()
         int c = viatom.Open(filename);
         if (c > 0) {
             Notify(tr("Imported %1 oximetry session(s) from\n\n%2").arg(c).arg(filename), tr("Import Success"));
+            PopulatePurgeMenu();
         } else if (c == 0) {
             Notify(tr("Already up to date with oximetry data at\n\n%1").arg(filename), tr("Up to date"));
         } else {
