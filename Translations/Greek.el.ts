@@ -4101,37 +4101,37 @@ Would you like do this now?</source>
     <message>
         <location filename="../oscar/profileselect.ui" line="14"/>
         <source>Select Profile</source>
-        <translation type="unfinished"></translation>
+        <translation>Επιλέξτε Προφίλ</translation>
     </message>
     <message>
         <location filename="../oscar/profileselect.ui" line="115"/>
         <source>Search:</source>
-        <translation type="unfinished"></translation>
+        <translation>Αναζήτηση:</translation>
     </message>
     <message>
         <location filename="../oscar/profileselect.ui" line="191"/>
         <source>Start with the selected user profile.</source>
-        <translation type="unfinished"></translation>
+        <translation>Ξεκινήστε με το επιλεγμένο προφίλ χρήστη.</translation>
     </message>
     <message>
         <location filename="../oscar/profileselect.ui" line="194"/>
         <source>&amp;Select User</source>
-        <translation type="unfinished"></translation>
+        <translation>&amp;Επιλέξτε Χρήστη</translation>
     </message>
     <message>
         <location filename="../oscar/profileselect.ui" line="215"/>
         <source>Create a new user profile.</source>
-        <translation type="unfinished"></translation>
+        <translation>Δημιουργήστε ένα νέο προφίλ χρήστη.</translation>
     </message>
     <message>
         <location filename="../oscar/profileselect.ui" line="218"/>
         <source>New Profile</source>
-        <translation type="unfinished"></translation>
+        <translation>Νέο προφίλ</translation>
     </message>
     <message>
         <location filename="../oscar/profileselect.ui" line="235"/>
         <source>Choose a different OSCAR data folder.</source>
-        <translation type="unfinished"></translation>
+        <translation>Επιλέξτε διαφορετικό φάκελο δεδομένων OSCAR.</translation>
     </message>
     <message>
         <location filename="../oscar/profileselect.ui" line="274"/>
@@ -4141,124 +4141,124 @@ Would you like do this now?</source>
     <message>
         <location filename="../oscar/profileselect.ui" line="310"/>
         <source>Click here if you didn&apos;t want to start OSCAR.</source>
-        <translation type="unfinished"></translation>
+        <translation>Κάντε κλικ εδώ αν δεν θέλετε να ξεκινήσετε το OSCAR.</translation>
     </message>
     <message>
         <location filename="../oscar/profileselect.ui" line="383"/>
         <source>The current location of OSCAR data store.</source>
-        <translation type="unfinished"></translation>
+        <translation>Η τρέχουσα θέση αποθήκευσης δεδομένων OSCAR.</translation>
     </message>
     <message>
         <location filename="../oscar/profileselect.ui" line="241"/>
         <source>&amp;Different Folder</source>
-        <translation type="unfinished"></translation>
+        <translation>&amp;Διαφορετικός φάκελος</translation>
     </message>
     <message>
         <location filename="../oscar/profileselect.ui" line="287"/>
         <source>[version]</source>
-        <translation type="unfinished"></translation>
+        <translation>[εκδοχή]</translation>
     </message>
     <message>
         <location filename="../oscar/profileselect.ui" line="313"/>
         <source>&amp;Quit</source>
-        <translation type="unfinished"></translation>
+        <translation>&amp;Εγκαταλείπω</translation>
     </message>
     <message>
         <location filename="../oscar/profileselect.ui" line="370"/>
         <source>Folder:</source>
-        <translation type="unfinished"></translation>
+        <translation>Ντοσιέ:</translation>
     </message>
     <message>
         <location filename="../oscar/profileselect.ui" line="389"/>
         <source>[data directory]</source>
-        <translation type="unfinished"></translation>
+        <translation>[κατάλογος δεδομένων]</translation>
     </message>
     <message>
         <location filename="../oscar/profileselect.cpp" line="92"/>
         <source>Open Profile</source>
-        <translation type="unfinished"></translation>
+        <translation>Ανοίξτε το προφίλ</translation>
     </message>
     <message>
         <location filename="../oscar/profileselect.cpp" line="93"/>
         <source>Edit Profile</source>
-        <translation type="unfinished"></translation>
+        <translation>Επεξεργασία προφίλ</translation>
     </message>
     <message>
         <location filename="../oscar/profileselect.cpp" line="95"/>
         <source>Delete Profile</source>
-        <translation type="unfinished"></translation>
+        <translation>Διαγραφή προφίλ</translation>
     </message>
     <message>
         <location filename="../oscar/profileselect.cpp" line="139"/>
         <location filename="../oscar/profileselect.cpp" line="220"/>
         <source>Enter Password for %1</source>
-        <translation type="unfinished"></translation>
+        <translation>Εισαγάγετε τον κωδικό πρόσβασης για %1</translation>
     </message>
     <message>
         <location filename="../oscar/profileselect.cpp" line="158"/>
         <location filename="../oscar/profileselect.cpp" line="342"/>
         <source>Incorrect Password</source>
-        <translation type="unfinished"></translation>
+        <translation>Λάθος κωδικός</translation>
     </message>
     <message>
         <location filename="../oscar/profileselect.cpp" line="160"/>
         <source>You entered the password wrong too many times.</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../oscar/profileselect.cpp" line="182"/>
         <source>Enter the word DELETE below to confirm.</source>
-        <translation type="unfinished"></translation>
+        <translation>Εισαγάγατε τον κωδικό λάθος πάρα πολλές φορές.</translation>
     </message>
     <message>
         <location filename="../oscar/profileselect.cpp" line="182"/>
         <source>You are about to destroy profile &apos;%1&apos;.</source>
-        <translation type="unfinished"></translation>
+        <translation>Πρόκειται να καταστρέψετε το προφίλ &apos;%1&apos;.</translation>
     </message>
     <message>
         <location filename="../oscar/profileselect.cpp" line="201"/>
         <source>Sorry</source>
-        <translation type="unfinished"></translation>
+        <translation>Συγνώμη</translation>
     </message>
     <message>
         <location filename="../oscar/profileselect.cpp" line="201"/>
         <source>You need to enter DELETE in capital letters.</source>
-        <translation type="unfinished"></translation>
+        <translation>Πρέπει να εισάγετε DELETE με κεφαλαία γράμματα.</translation>
     </message>
     <message>
         <location filename="../oscar/profileselect.cpp" line="239"/>
         <source>You entered an incorrect password</source>
-        <translation type="unfinished"></translation>
+        <translation>Εισαγάγετε έναν εσφαλμένο κωδικό πρόσβασης</translation>
     </message>
     <message>
         <location filename="../oscar/profileselect.cpp" line="242"/>
         <source>If you&apos;re trying to delete because you forgot the password, you need to delete it manually.</source>
-        <translation type="unfinished"></translation>
+        <translation>Αν προσπαθείτε να διαγράψετε επειδή ξεχάσατε τον κωδικό πρόσβασης, πρέπει να το διαγράψετε με μη αυτόματο τρόπο.</translation>
     </message>
     <message>
         <location filename="../oscar/profileselect.cpp" line="255"/>
         <source>There was an error deleting the profile directory, you need to manually remove it.</source>
-        <translation type="unfinished"></translation>
+        <translation>Παρουσιάστηκε σφάλμα κατά τη διαγραφή του καταλόγου προφίλ, πρέπει να το καταργήσετε με μη αυτόματο τρόπο.</translation>
     </message>
     <message>
         <location filename="../oscar/profileselect.cpp" line="259"/>
         <source>Profile &apos;%1&apos; was succesfully deleted</source>
-        <translation type="unfinished"></translation>
+        <translation>Το προφίλ &apos;%1&apos; διαγράφηκε με επιτυχία</translation>
     </message>
     <message>
         <location filename="../oscar/profileselect.cpp" line="289"/>
         <source>Create new profile</source>
-        <translation type="unfinished"></translation>
+        <translation>Δημιουργία νέου προφίλ</translation>
     </message>
     <message>
         <location filename="../oscar/profileselect.cpp" line="326"/>
         <source>Enter Password</source>
-        <translation type="unfinished"></translation>
+        <translation>Εισάγετε τον κωδικό πρόσβασης</translation>
     </message>
     <message>
         <location filename="../oscar/profileselect.cpp" line="345"/>
         <source>You entered an Incorrect Password too many times. Exiting!</source>
-        <translation type="unfinished"></translation>
+        <translation>Έχετε εισαγάγει έναν εσφαλμένο κωδικό πρόσβασης πάρα πολλές φορές. Έξοδος!</translation>
     </message>
 </context>
 <context>
