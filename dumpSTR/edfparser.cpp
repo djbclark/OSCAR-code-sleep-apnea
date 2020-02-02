@@ -8,7 +8,6 @@
  * for more details. */
 
 #include <QDateTime>
-#include <QTimeZone>
 #include <QDebug>
 #include <QFile>
 #include <QMutexLocker>
@@ -20,34 +19,17 @@
 
 #include "edfparser.h"
 
-//EDFSignal::~EDFSignal()
-//{
-//    delete [] dataArray;
-//}
-
 EDFInfo::EDFInfo()
 {
-    filename = QString();
-    edfsignals.clear();
     filesize = 0;
     datasize = 0;
     signalPtr = nullptr;
     hdrPtr = nullptr;
-//    fileData = nullptr;
+    fileData = nullptr;
 }
-
-    int EDFInfo::TZ_offset = QTimeZone::systemTimeZone().offsetFromUtc(QDateTime::currentDateTime());
-    QTimeZone EDFInfo::localNoDST = QTimeZone(TZ_offset);
 
 EDFInfo::~EDFInfo()
 {
-//    if ( fileData ) {
-	if (fileData.size() > 0) {
-	    qDebug() << "EDFInfo destructor clearing fileData";
-	    fileData.clear();
-	}
-//    }
-
     for (auto & s : edfsignals) {
         if (s.dataArray)  
             delete [] s.dataArray;
@@ -56,68 +38,62 @@ EDFInfo::~EDFInfo()
 //    	delete  a;
 }
 
-bool EDFInfo::Open(const QString & name)
+QByteArray * EDFInfo::Open(const QString & name)
 {
     if (hdrPtr != nullptr) {
         qWarning() << "EDFInfo::Open() called with file already open " << name;
         sleep(1);
-        return false;
+        return nullptr;
     }
     QFile fi(name);
     if (!fi.open(QFile::ReadOnly)) {
         qDebug() << "EDFInfo::Open() Couldn't open file " << name;
         sleep(1);
-        return false;
+        return nullptr;
     }
-//    fileData = new QByteArray();
-    if (name.endsWith(STR_ext_gz)) {
-        fileData = gUncompress(fi.readAll()); // Open and decompress file
-    } else {
-        fileData = fi.readAll(); // Open and read uncompressed file
-    }
+    fileData = new QByteArray();
+//    if (name.endsWith(STR_ext_gz)) {
+//        *fileData = gUncompress(fi.readAll()); // Open and decompress file
+//    } else {
+        *fileData = fi.readAll(); // Open and read uncompressed file
+//    }
     fi.close();
-    if (fileData.size() <= EDFHeaderSize) {
-    	fileData.clear();;
+    if (fileData->size() <= EDFHeaderSize) {
+    	fileData->clear();
         qDebug() << "EDFInfo::Open() File too short " << name;
         sleep(1);
-        return false;
+        return nullptr;
     }
     filename = name;
-//    return fileData;
-    return true;
+    return fileData;
 }
 
-QDateTime EDFInfo::getStartDT( QString dateTimeStr )
-{
-//  edfHdr.startdate_orig = QDateTime::fromString(QString::fromLatin1(hdrPtr->datetime, 16), "dd.MM.yyHH.mm.ss");
-//  QString dateTimeStr;    // , dateStr, timeStr;
-    QDate qDate;
-    QTime qTime;
-//  dateTimeStr = QString::fromLatin1(hdrPtr->datetime, 16);
-//    dateStr = dateTimeStr.left(8);
-//    timeStr = dateTimeStr.right(8);
-    qDate = QDate::fromString(dateTimeStr.left(8), "dd.MM.yy");
-    qTime = QTime::fromString(dateTimeStr.right(8), "HH.mm.ss");
-    return QDateTime(qDate, qTime, localNoDST);
-}
-
-bool EDFInfo::parseHeader( EDFHeaderRaw *hdrPtr )
+bool EDFInfo::Parse(QByteArray * fileData ) 
 {
     bool ok;
 
+    if (fileData == nullptr) {
+        qWarning() << "EDFInfo::Parse() called without valid EDF data " << filename;
+        sleep(1);
+        return false;
+    }
+    
+    hdrPtr = (EDFHeaderRaw *)(*fileData).constData();
+    signalPtr = (char *)(*fileData).constData() + EDFHeaderSize;
+    filesize = (*fileData).size();
+    pos = 0;
+
+    eof = false;
     edfHdr.version = QString::fromLatin1(hdrPtr->version, 8).toLong(&ok);
     if (!ok) {
         qWarning() << "EDFInfo::Parse() Bad Version " << filename;
-//      sleep(1);
-        fileData.clear();
+        sleep(1);
         return false;
     }
 
     edfHdr.patientident=QString::fromLatin1(hdrPtr->patientident,80).trimmed();
     edfHdr.recordingident = QString::fromLatin1(hdrPtr->recordingident, 80).trimmed(); // Serial number is in here..
-    edfHdr.startdate_orig = getStartDT(QString::fromLatin1(hdrPtr->datetime, 16));
-    // This conversion will fail in 2084 after when the spec calls for the year to be 'yy' instead of digits
-    // The solution is left for the afflicted - it won't be me!
+    edfHdr.startdate_orig = QDateTime::fromString(QString::fromLatin1(hdrPtr->datetime, 16), "dd.MM.yyHH.mm.ss");
     QDate d2 = edfHdr.startdate_orig.date();
     if (d2.year() < 2000) {
         d2.setDate(d2.year() + 100, d2.month(), d2.day());
@@ -127,54 +103,29 @@ bool EDFInfo::parseHeader( EDFHeaderRaw *hdrPtr )
     edfHdr.num_header_bytes = QString::fromLatin1(hdrPtr->num_header_bytes, 8).toLong(&ok);
     if (!ok) {
         qWarning() << "EDFInfo::Parse() Bad header byte count " << filename;
-//      sleep(1);
-        fileData.clear();
+        sleep(1);
         return false;
     }
     edfHdr.reserved44=QString::fromLatin1(hdrPtr->reserved, 44).trimmed();
     edfHdr.num_data_records = QString::fromLatin1(hdrPtr->num_data_records, 8).toLong(&ok);
     if (!ok) {
         qWarning() << "EDFInfo::Parse() Bad data record count " << filename;
-//      sleep(1);
-        fileData.clear();
+        sleep(1);
         return false;
     }
     edfHdr.duration_Seconds = QString::fromLatin1(hdrPtr->dur_data_records, 8).toDouble(&ok);
     if (!ok) {
         qWarning() << "EDFInfo::Parse() Bad duration " << filename;
-//      sleep(1);
-        fileData.clear();
+        sleep(1);
         return false;
     }
     edfHdr.num_signals = QString::fromLatin1(hdrPtr->num_signals, 4).toLong(&ok);
     if (!ok) {
         qWarning() << "EDFInfo::Parse() Bad number of signals " << filename;
-//      sleep(1);
-        fileData.clear();
+        sleep(1);
         return false;
     }
-    return true;
-}
-
-bool EDFInfo::Parse() {
-    bool ok;
-
-    if (fileData.size() == 0) {
-        qWarning() << "EDFInfo::Parse() called without valid EDF data " << filename;
-//        sleep(1);
-        return false;
-    }
-    
-    hdrPtr = (EDFHeaderRaw *)fileData.constData();
-    signalPtr = (char *)fileData.constData() + EDFHeaderSize;
-    filesize = fileData.size();
     datasize = filesize - EDFHeaderSize;
-    pos = 0;
-
-    eof = false;
-
-    if ( ! parseHeader( hdrPtr ) )
-        return false;
 
     // Initialize fixed-size signal list.
     edfsignals.resize(edfHdr.num_signals);
@@ -189,12 +140,11 @@ bool EDFInfo::Parse() {
         if (eof) {
             qWarning() << "EDFInfo::Parse() Early end of file " << filename;
             sleep(1);
-            fileData.clear();
             return false;
         }
     }
     for (auto & sig : edfsignals) { 
-        sig.transducer_type = ReadBytes(80); 
+        sig.transducer_type = ReadBytes(80).trimmed(); 
     }
     for (auto & sig : edfsignals) { 
         sig.physical_dimension = ReadBytes(8); 
@@ -214,95 +164,67 @@ bool EDFInfo::Parse() {
         sig.offset = 0;
     }
     for (auto & sig : edfsignals) { 
-        sig.prefiltering = ReadBytes(80); 
+        sig.prefiltering = ReadBytes(80).trimmed(); 
     }
     for (auto & sig : edfsignals) { 
         sig.sampleCnt = ReadBytes(8).toLong(&ok); 
     }
     for (auto & sig : edfsignals) { 
-        sig.reserved = ReadBytes(32); 
+        sig.reserved = ReadBytes(32).trimmed(); 
     }
 
     // could do it earlier, but it won't crash from > EOF Reads
     if (eof) {
         qWarning() << "EDFInfo::Parse() Early end of file " << filename;
-//        sleep(1);
-        fileData.clear();
+        sleep(1);
         return false;
     }
 
     // Now check the file isn't truncated before allocating space for the values
-    long allocsize = 0;
+    long totalsize = 0;
     for (auto & sig : edfsignals) {
         if (edfHdr.num_data_records > 0) {
-            allocsize += sig.sampleCnt * edfHdr.num_data_records * 2;
+            totalsize += sig.sampleCnt * edfHdr.num_data_records * 2;
         }
     }
-    if (allocsize > (datasize - pos)) {
+    if (totalsize > datasize) {
         // Space required more than the remainder left to read,
         // so abort and let the user clean up the corrupted file themselves
         qWarning() << "EDFInfo::Parse(): " << filename << " is too short!";
-//        sleep(1);
-        fileData.clear();
+        sleep(1);
         return false;
     }
 
     // allocate the arrays for the signal values
     for (auto & sig : edfsignals) {
         long samples = sig.sampleCnt * edfHdr.num_data_records;
-        if (edfHdr.num_data_records <= 0) {
+        if (edfHdr.num_data_records <= 0)
             sig.dataArray = nullptr;
-            continue;
-        }
-        sig.dataArray = new qint16 [samples];
-//      sig.pos = 0;
+        else 
+            sig.dataArray = new qint16 [samples];
+//      qDebug() << "Allocated " << samples  << " at " << sig.dataArray;    
     }
     for (int recNo = 0; recNo < edfHdr.num_data_records; recNo++) {
         for (auto & sig : edfsignals) {
-            if ( sig.label.contains("Annotations") ) {
-                annotations.push_back(ReadAnnotations( (char *)&signalPtr[pos], sig.sampleCnt*2));
-                pos += sig.sampleCnt * 2;
-            } else {    // it's got genuine 16-bit values
+        	if ( sig.label.contains("Annotation") ) {
+        	//	qDebug() << "Rec " << recNo << " Anno @ " << pos << " starts with " << signalPtr[pos];
+        		annotations.push_back(ReadAnnotations( (char *)&signalPtr[pos], sig.sampleCnt*2));
+        		pos += sig.sampleCnt * 2;
+        	} else {      //  it's got genuine 16-bit values
                 for (int j=0;j<sig.sampleCnt;j++) { // Big endian safe
                     qint16 t=Read16();
-                    sig.dataArray[recNo*sig.sampleCnt+j]=t;
-                }
-            }
+                    sig.dataArray[recNo*sig.sampleCnt + j]=t;
+    	        }
+			}
         }
     }
-    fileData.clear();
-    return true;
-}
-
-EDFHeaderQT * EDFInfo::GetHeader( const QString & name)
-{
-    QFile fi(name);
-    if (!fi.open(QFile::ReadOnly)) {
-        qDebug() << "EDFInfo::Open() Couldn't open file " << name;
-        sleep(1);
-        return nullptr;
-    }
-//    fileData = new QByteArray();
-    if (name.endsWith(STR_ext_gz)) {
-        fileData = gUncompress(fi.read(sizeof(EDFHeaderRaw))); // Open and decompress file
-    } else {
-        fileData = fi.read(sizeof(EDFHeaderRaw)); // Open and read uncompressed file
-    }
-    fi.close();
-    filename = name;
-    hdrPtr = (EDFHeaderRaw *)fileData.constData();
-
-    if ( ! parseHeader( hdrPtr ) )
-        return nullptr;
-
-    fileData.clear();
-    return & edfHdr;    
+	return true;
 }
 
 // Parse the EDF file to get the annotations out of it.
-QVector<Annotation> EDFInfo::ReadAnnotations(const char * data, int charLen)
+QVector<Annotation>  EDFInfo::ReadAnnotations(const char * data, int charLen)
 {
-	QVector<Annotation> annoVec = QVector<Annotation>();
+	QVector<Annotation>  annoVec =  QVector<Annotation>();
 	
     // Process event annotation record
 
@@ -358,6 +280,7 @@ QVector<Annotation> EDFInfo::ReadAnnotations(const char * data, int charLen)
         }
 
         while ((data[pos] == AnnoSep) && (pos < charLen)) {
+        	text = "";
             int textLen = 0;
             pos++;
             const char * textStart = &data[pos];

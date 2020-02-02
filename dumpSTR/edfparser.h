@@ -15,9 +15,10 @@
 #include <QHash>
 #include <QList>
 #include <QDateTime>
-#include <QTimeZone>
 
-#include "SleepLib/common.h"
+// #include "SleepLib/common.h"
+
+typedef float EventDataType;
 
 const QString STR_ext_EDF = "edf";
 const QString STR_ext_gz = ".gz";
@@ -69,8 +70,6 @@ struct EDFHeaderQT {
     */
 struct EDFSignal {
   public:
-//  virtual ~EDFSignal();
-
     QString label;                      //! \brief Name of this Signal
     QString transducer_type;            //! \brief Tranducer Type (source of the data, usually blank)
     QString physical_dimension;         //! \brief The units of measurements represented by this signal
@@ -83,9 +82,8 @@ struct EDFSignal {
     QString prefiltering;               //! \brief Any prefiltering methods used (usually blank)
     long sampleCnt;                     //! \brief Number of samples per record
     QString reserved;                   //! \brief Reserved (usually blank)
-    qint16 * dataArray;                 //! \brief Pointer to the signals sample data
 
-//    int pos;                            //! \brief a non-EDF extra used internally to count the signal data
+    qint16 * dataArray;                   //! \brief Offset in record to the signals sample data
 };
 
 /*! \class Annotation
@@ -122,15 +120,11 @@ class EDFInfo
 
     virtual ~EDFInfo();
 
-    virtual bool Open(const QString & name);                    //! \brief Open the EDF+ file, and read it's header
+    virtual QByteArray * Open(const QString & name);                    //! \brief Open the EDF+ file, and read it's header
 
-    virtual bool Parse();                          //! \brief Parse the EDF+ file into the EDFheaderQT. Must call Open(..) first.
+    virtual bool Parse(QByteArray * fileData);                          //! \brief Parse the EDF+ file into the EDFheaderQT. Must call Open(..) first.
 
-    virtual bool parseHeader( EDFHeaderRaw * hdrPtr );                  //! \brief parse just the edf header for duration, etc
-
-    virtual EDFSignal * lookupLabel(const QString & name, int index=0);  //! \brief Return a ptr to the i'th signal with that name
-
-    virtual EDFHeaderQT * GetHeader( const QString & name);             //! \brief returna pointer to the header block
+    virtual EDFSignal *lookupLabel(const QString & name, int index=0);  //! \brief Return a ptr to the i'th signal with that name
 
     virtual long GetNumSignals() { return edfHdr.num_signals; }         //! \brief Returns the number of signals contained in this EDF file
 
@@ -140,20 +134,17 @@ class EDFInfo
 
     virtual QString GetPatient() { return edfHdr.patientident; }        //! \brief Returns the patientid field from the EDF header
 
-    static QDateTime getStartDT(const QString str);                    //! \brief Returns the start time using noLocalDST
-
 //  The data members follow
-
-    static int  TZ_offset;
-    static QTimeZone localNoDST;
 
     QString filename;								//!	\brief For debug and error messages
 
     EDFHeaderQT edfHdr;                             //! \brief The header in a QT friendly form
 
     QVector<EDFSignal> edfsignals;                  //! \brief Holds the EDFSignals contained in this edf file
+    
+//  QVector< QVector<qint16> > dataRecords;			//! \brief Holds the datarecords
 
-    QVector< QVector<Annotation> > annotations;     //! \brief Holds the Annotaions for this EDF file
+    QVector< QVector<Annotation> > annotations;   //! \brief Holds the Annotaions for this EDF file
 
     QStringList signal_labels;                      //! \brief An by-name indexed into the EDFSignal data
 
@@ -161,14 +152,14 @@ class EDFInfo
 
 //  the following could be private
   private:
-    QVector<Annotation> ReadAnnotations( const char * data, int charLen );	//! \brief Create an Annotaion vector from the signal values
+    QVector<Annotation>  ReadAnnotations( const char * data, int charLen );	//! \brief Create an Annotaion vector from the signal values
 
     QString ReadBytes(unsigned n);                                   //! \brief Read n bytes of 8 bit data from the EDF+ data stream
 
     qint16 Read16();                                            //! \brief Read 16 bit word of data from the EDF+ data stream
 
     //! \brief This is the array holding the EDF file data
-    QByteArray  fileData;
+    QByteArray  * fileData;
     //! \brief  The EDF+ files header structure, used as a place holder while processing the text data.
     EDFHeaderRaw *hdrPtr;
     //! \brief This is the array of signal descriptors and values
