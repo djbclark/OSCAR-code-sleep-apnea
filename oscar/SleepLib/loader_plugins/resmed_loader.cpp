@@ -284,8 +284,10 @@ MachineInfo ResmedLoader::PeekInfo(const QString & path)
 long event_cnt = 0;
 
 bool parseIdentTGT( QString path, MachineInfo * info, QHash<QString, QString> & idmap );    // forward
-void BackupSTRfiles( const QString path, const QString strBackupPath, MachineInfo info, QMap<QDate, STRFile> STRmap );  // forward
-int ResmedLoader::Open(const QString & dirpath, ResDaySaveCallback s)
+void BackupSTRfiles( const QString strpath, const QString path, const QString strBackupPath,
+                        MachineInfo & info, QMap<QDate, STRFile> & STRmap );                    // forward
+
+int ResmedLoader::Open(const QString & dirpath, ResDaySaveCallback s)                       // alternate for unit testing
 {
     ResDaySaveCallback origCallback = saveCallback;
     saveCallback = s;
@@ -366,18 +368,18 @@ int ResmedLoader::Open(const QString & dirpath)
     Machine *mach = p_profile->lookupMachine(info.serial, info.loadername);
     if ( mach ) {       // we have seen this machine
         qDebug() << "We have seen this machime";
-        QDate lastDate = p_profile->LastDay(MT_CPAP);
-        firstImportDay = lastDate.addDays(-1);
+//      QDate lastDate = p_profile->LastDay(MT_CPAP);
+//      firstImportDay = lastDate.addDays(-1);
     } else {            // Starting from new beginnings - new or purged
         qDebug() << "New machine or just purged";
         p_profile->forceResmedPrefs();
-        QDateTime ignoreBefore = p_profile->session->ignoreOlderSessionsDate();
-        bool ignoreOldSessions = p_profile->session->ignoreOlderSessions();
         mach = p_profile->CreateMachine( info );
-
-        if (ignoreOldSessions) 
-            firstImportDay = ignoreBefore.date();
     }
+    QDateTime ignoreBefore = p_profile->session->ignoreOlderSessionsDate();
+    bool ignoreOldSessions = p_profile->session->ignoreOlderSessions();
+
+    if (ignoreOldSessions) 
+        firstImportDay = ignoreBefore.date();
     qDebug() << "First day to import: " << firstImportDay.toString();
 
     bool importing_backups = false;
@@ -419,9 +421,11 @@ int ResmedLoader::Open(const QString & dirpath)
         dir.mkpath(strBackupPath);
 
     if ( ! importing_backups ) {
-        BackupSTRfiles( path, strBackupPath, info, STRmap );
+        BackupSTRfiles( strpath, path, strBackupPath, info, STRmap );
     }       // end if not importing the backup files
+#ifdef STR_DEBUG
     qDebug() << "STRmap size is " << STRmap.size();
+#endif
 
     // Now we open the REAL STR_Backup, and open the rest for later parsing
 
@@ -429,7 +433,9 @@ int ResmedLoader::Open(const QString & dirpath)
     dir.setFilter(QDir::Files | QDir::Hidden | QDir::Readable);
     QFileInfoList flist = dir.entryInfoList();
     QDate date;
+#ifdef STR_DEBUG
     qDebug() << "STR_Backup folder size is " << flist.size();
+#endif
 
     // Add any STR_Backup versions to the file list
     for (auto & fi : flist) {
@@ -445,12 +451,12 @@ int ResmedLoader::Open(const QString & dirpath)
             continue;
 
         ResMedEDFInfo * stredf = new ResMedEDFInfo();
-        if ( stredf->Open(fi.canonicalFilePath() ) ) {
-        qDebug() << "Failed to open" << filename;
-        delete stredf;
-        continue;
-    }
-        if (!stredf->Parse()) {
+        if ( ! stredf->Open(fi.canonicalFilePath() ) ) {
+            qDebug() << "Failed to open" << fi.canonicalFilePath();
+            delete stredf;
+            continue;
+        }
+        if ( ! stredf->Parse()) {
             qDebug() << "Faulty STR file" << filename;
             delete stredf;
             continue;
@@ -464,11 +470,14 @@ int ResmedLoader::Open(const QString & dirpath)
 
         // Don't trust the filename date, pick the one inside the STR...
         date = stredf->edfHdr.startdate_orig.date();
+        qDebug() << "Resetting STR date from" << date.toString() << "to first of month ... WHY???";
         date = QDate(date.year(), date.month(), 1);
 
         STRmap[date] = STRFile(fi.canonicalFilePath(), stredf);
     }       // end for walking the STR_Backup directory
+#ifdef STR_DEBUG
     qDebug() << "STRmap size is now " << STRmap.size();
+#endif
 
     ///////////////////////////////////////////////////////////////////////////////////
     // Build a Date map of all records in STR.edf files, populating ResDayList
@@ -478,12 +487,14 @@ int ResmedLoader::Open(const QString & dirpath)
 
     // We are done with the Parsed STR EDF objects, so delete them
     for (auto it=STRmap.begin(), end=STRmap.end(); it != end; ++it) {
+#ifdef STR_DEBUG
         qDebug() << "Deleting edf of" << it.value().filename;
-        sleep(1);
+#endif
         delete it.value().edf;
     }
+#ifdef STR_DEBUG
     qDebug() << "Finished STRmap cleanup";
-    sleep(1);
+#endif
 
     ///////////////////////////////////////////////////////////////////////////////////
     // Create the backup folder for storing a copy of everything in..
@@ -526,13 +537,14 @@ int ResmedLoader::Open(const QString & dirpath)
         return 0;
 
     qDebug() << "Starting scan of DATALOG";
-    sleep(1);
+//  sleep(1);
     ScanFiles(mach, datalogPath, firstImportDay);
     if (isAborted())
         return 0;
 
     qDebug() << "Finished DATALOG scan";
-    sleep(1);
+//  sleep(1);
+
     // Now at this point we have resdayList populated with processable summary and EDF files data
     // that can be processed in threads..
 
@@ -915,6 +927,10 @@ void ResmedLoader::ProcessSTRfiles(Machine *mach, QMap<QDate, STRFile> & STRmap,
         STRFile & file = it.value();
         ResMedEDFInfo & str = *file.edf;
         totalRecs += str.GetNumDataRecords();
+#ifdef STR_DEBUG        
+        qDebug() << "STR file is" << file.filename;
+        qDebug() << "First day" << QDateTime::fromMSecsSinceEpoch(str.startdate, EDFInfo::localNoDST).date().toString() << "for" << totalRecs << "days";
+#endif
     }
 
     emit updateMessage(QObject::tr("Parsing STR.edf records..."));
@@ -932,22 +948,28 @@ void ResmedLoader::ProcessSTRfiles(Machine *mach, QMap<QDate, STRFile> & STRmap,
         int size = str.GetNumDataRecords();
         QDate lastDay = date.addDays(size-1);
 
+#ifdef STR_DEBUG        
         qDebug() << "Parsing" << strfile << date.toString() << size << str.GetNumSignals();
         qDebug() << "Last day is" << lastDay;
+#endif
 
         if ( lastDay < firstImport ) {
-            qDebug() << "LastDay before firstImport, skipping" << file.filename;
+            qDebug() << "LastDay before firstImport, skipping" << strfile;
             continue;
         }
 
         // ResMed and their consistent naming and spacing... :/
-        EDFSignal *maskon = str.lookupLabel("Mask On");
+        EDFSignal *maskon = str.lookupLabel("Mask On");     // Series 9 machines
         if (!maskon) {
-            maskon = str.lookupLabel("MaskOn");
+            maskon = str.lookupLabel("MaskOn");             // Series 10 machines
         }
         EDFSignal *maskoff = str.lookupLabel("Mask Off");
         if (!maskoff) {
              maskoff = str.lookupLabel("MaskOff");
+        }
+        EDFSignal *maskeventcount = str.lookupLabel("Mask Events");
+        if (!maskeventcount) {
+             maskeventcount = str.lookupLabel("MaskEvents");
         }
 
         EDFSignal *sig = nullptr;
@@ -969,6 +991,11 @@ void ResmedLoader::ProcessSTRfiles(Machine *mach, QMap<QDate, STRFile> & STRmap,
             auto rit = resdayList.find(date);
             if (rit != resdayList.end()) {
                 // Already seen this record.. should check if the data is the same, but meh.
+                // At least check the maskeventcount to see if it changed...
+//              if ( maskeventcount* != rit...maskevents ) {
+//                  qDebug() << "Maske events don't match, purge" << rit...date().toString;
+//                  purge...
+//              }
 #ifdef SESSION_DEBUG
                 qDebug() << "Skipping" << date.toString() << "Already saw this one";
 #endif
@@ -995,11 +1022,12 @@ void ResmedLoader::ProcessSTRfiles(Machine *mach, QMap<QDate, STRFile> & STRmap,
 
             rit = resdayList.insert(date, ResMedDay(date));
 
-//          qDebug() << "Setting up STRRecord for" << date.toString();
-//          sleep(1);
+#ifdef STR_DEBUG        
+            qDebug() << "Setting up STRRecord for" << date.toString();
+#endif
             STRRecord &R = rit.value().str;
 
-            uint noonstamp = QDateTime(date,QTime(12,0,0)).toTime_t();
+            uint noonstamp = QDateTime(date,QTime(12,0,0), EDFInfo::localNoDST).toTime_t();
             R.date = date;
 
             // skipday = false;
@@ -1009,23 +1037,37 @@ void ResmedLoader::ProcessSTRfiles(Machine *mach, QMap<QDate, STRFile> & STRmap,
             // Scan the mask on/off events by minute
             R.maskon.resize(maskon->sampleCnt);
             R.maskoff.resize(maskoff->sampleCnt);
+            int lastOn = -1;
+            int lastOff = -1;
             for (int s = 0; s < maskon->sampleCnt; ++s) {
                 qint32 on = maskon->dataArray[recstart + s];    // these on/off times are minutes since noon
                 qint32 off = maskoff->dataArray[recstart + s];
-
-                R.maskon[s] = (on>0) ? (noonstamp + (on * 60)) : 0; // convert them to seconds since midnight
-                R.maskoff[s] = (off>0) ? (noonstamp + (off * 60)) : 0;
+                if ( on > 0 ) {       // convert them to seconds since midnight
+                    lastOn = s;
+                    R.maskon[s] = (noonstamp + (on * 60));
+                } else
+                    R.maskon[s] = 0;
+                if ( off > 0 ) {
+                    lastOff = s;
+                    R.maskoff[s] = (noonstamp + (off * 60));
+                } else
+                    R.maskoff[s] = 0;
             }
-
 
             // two conditions that need dealing with, mask running at noon start, and finishing at noon start..
             // (Sessions are forcibly split by resmed.. why the heck don't they store it that way???)
             if ((R.maskon[0]==0) && (R.maskoff[0]>0)) {
                 R.maskon[0] = noonstamp;
-            }       // TODO This should be last non-zero sample, not the last sample in the array
-            if ((R.maskon[maskon->sampleCnt-1] > 0) && (R.maskoff[maskoff->sampleCnt-1] == 0)) {
-                R.maskoff[maskoff->sampleCnt-1] = QDateTime(date,QTime(12,0,0)).addDays(1).toTime_t() - 1;
             }
+            // TODO This should be last non-zero sample, not the last sample in the array
+                    // DONE
+            if ( (lastOn >= 0) && (lastOff >= 0) ) {
+                if ((R.maskon[lastOn] > 0) && (R.maskoff[lastOff] == 0)) {
+                    R.maskoff[lastOff] = QDateTime(date,QTime(12,0,0), EDFInfo::localNoDST).addDays(1).toTime_t() - 1;
+                }
+            }
+
+            R.maskevents = maskeventcount->dataArray[rec];
 
             CPAPMode mode = MODE_UNKNOWN;
 
@@ -1365,12 +1407,14 @@ void ResmedLoader::ProcessSTRfiles(Machine *mach, QMap<QDate, STRFile> & STRmap,
             if ((sig = str.lookupLabel("S.Tube"))) {
                 R.s_Tube = EventDataType(sig->dataArray[rec]) * sig->gain + sig->offset;
             }
-//          qDebug() << "Finished" << date.toString();
-//          sleep(1);
+#ifdef STR_DEBUG
+            qDebug() << "Finished" << date.toString();
+#endif
         }
     }
-//  qDebug() << "Finished ParseSTR";
-//  sleep(3);
+#ifdef STR_DEBUG
+    qDebug() << "Finished ProcessSTR";
+#endif
 }
 
     ///////////////////////////////////////////////////////////////////////////////////
@@ -1400,9 +1444,9 @@ bool parseIdentTGT( QString path, MachineInfo * info, QHash<QString, QString> & 
     return true;
 }
 
-void BackupSTRfiles( const QString path, const QString strBackupPath, MachineInfo info, QMap<QDate, STRFile> STRmap ) {
-
-    QString strpath = path + RMS9_STR_strfile + STR_ext_EDF; // STR.edf file
+void BackupSTRfiles( const QString strpath, const QString path, const QString strBackupPath, 
+                    MachineInfo & info, QMap<QDate, STRFile> & STRmap )
+{
     QStringList strfiles;
     // add primary STR.edf
     strfiles.push_back(strpath);
@@ -1422,14 +1466,18 @@ void BackupSTRfiles( const QString path, const QString strBackupPath, MachineInf
             continue;
         strfiles.push_back(fi.canonicalFilePath());
     }
+#ifdef STR_DEBUG
+    qDebug() << "STR file list size is" << strfiles.size();
+#endif
 
     // Now place any of these files in the Backup folder sorted by the file date
     for (auto & filename : strfiles) {
         ResMedEDFInfo * stredf = new ResMedEDFInfo();
         if ( ! stredf->Open(filename) ) {
-        qDebug() << "Failed to open" << filename;
-        continue;
-    }
+            qDebug() << "Failed to open" << filename;
+            delete stredf;
+            continue;
+        }
         if ( ! stredf->Parse()) {
             qDebug() << "Faulty STR file" << filename;
             delete stredf;
@@ -1443,6 +1491,7 @@ void BackupSTRfiles( const QString path, const QString strBackupPath, MachineInf
         QDate date = stredf->edfHdr.startdate_orig.date();
         date = QDate(date.year(), date.month(), 1);
         if (STRmap.contains(date)) {
+            qDebug() << "STRmap already contains" << date.toString("YYYY-MM-dd");
             delete stredf;
             continue;
         }
@@ -1457,6 +1506,9 @@ void BackupSTRfiles( const QString path, const QString strBackupPath, MachineInf
         backupfile = compress_backups ? gzfile : nongzfile;
 
         if ( ! QFile::exists(backupfile)) {
+#ifdef STR_DEBUG
+            qDebug() << "Copying" << filename << "to" << backupfile;
+#endif
             if (filename.endsWith(STR_ext_gz,Qt::CaseInsensitive)) {    // we have a compressed file
                 if (compress_backups) {                 // fine, copy it to backup folder
                     QFile::copy(filename, backupfile);
@@ -1479,6 +1531,9 @@ void BackupSTRfiles( const QString path, const QString strBackupPath, MachineInf
 
         STRmap[date] = STRFile(backupfile, stredf);
     }   // end for walking the STR files list
+#ifdef STR_DEBUG
+    qDebug() << "STRmap has" << STRmap.size() << "entries";
+#endif
 }
 
 QHash<QString, QString> parseIdentLine( const QString line, MachineInfo * info)
@@ -1579,6 +1634,7 @@ EDFduration getEDFDuration(const QString & filename)
         QByteArray bytes = file.read(16).trimmed();
 //      We'll fix the xx85 problem below
 //      startDate = QDateTime::fromString(QString::fromLatin1(bytes, 16), "dd.MM.yyHH.mm.ss");
+//      getStartDT ought to be named getStartNoDST ... TODO someday
         startDate = EDFInfo::getStartDT(QString::fromLatin1(bytes,16));
 
         if (!file.seek(0xec)) {
@@ -1633,6 +1689,8 @@ EDFduration getEDFDuration(const QString & filename)
     }
     if ( ! startDate.isValid() ) {
         qDebug() << "Invalid date time retreieved parsing EDF duration for" << filename;
+        qDebug() << "Time zone(Utc) is" << startDate.timeZone().abbreviation(QDateTime::currentDateTimeUtc());
+        qDebug() << "Time zone is" << startDate.timeZone().abbreviation(QDateTime::currentDateTime());
         return EDFduration(0, 0, filename);
     }
 
@@ -1879,7 +1937,14 @@ void ResDayTask::run()
                 sess->setSummaryOnly(true);
                 sess->SetChanged(true);
 
-                save(loader, sess);
+//                loader->sessionMutex.lock();          // This chunk moved into SaveSession below
+//                sess->Store(mach->getDataPath());
+//                mach->AddSession(sess);
+//                loader->sessionCount++;
+//                loader->sessionMutex.unlock();
+////              delete sess;
+
+                save(loader, sess);                     // This is aliased to SaveSession - unless testing
             }
         }
         return;
@@ -1894,11 +1959,12 @@ void ResDayTask::run()
 
     QList<OverlappingEDF> overlaps;
 
-    int maskevents = resday->str.maskon.size();
+    int maskOnSize = resday->str.maskon.size();
     if (resday->str.date.isValid()) {
         //First populate Overlaps with Mask ON/OFF events
-        for (int i=0; i < maskevents; ++i) {
-            if ((resday->str.maskon[i]>0) || (resday->str.maskoff[i]>0)) {
+        for (int i=0; i < maskOnSize; ++i) {
+            if (((resday->str.maskon[i]>0) || (resday->str.maskoff[i]>0)) 
+                    && (resday->str.maskon[i] != resday->str.maskoff[i]) ) {
                 OverlappingEDF ov;
                 ov.start = resday->str.maskon[i];
                 ov.end = resday->str.maskoff[i];
@@ -1916,7 +1982,10 @@ void ResDayTask::run()
         EDFType type = lookupEDFType(filename);
 
         QString datestr = filename.section("_", 0, 1);
-        QDateTime filetime = QDateTime().fromString(datestr,"yyyyMMdd_HHmmss");
+//      QDateTime filetime = QDateTime().fromString(datestr,"yyyyMMdd_HHmmss");
+        QDate d2 = QDate::fromString( datestr.left(8), "yyyyMMdd");
+        QTime t2 = QTime::fromString( datestr.right(6), "hhmmss");
+        QDateTime filetime = QDateTime( d2, t2, EDFInfo::localNoDST );
 
         quint32 filetime_t = filetime.toTime_t();
         if (type == EDF_EVE) {      // skip the EVE and CSL files, b/c they often cover all sessions
@@ -2005,12 +2074,13 @@ void ResDayTask::run()
         if (ovr.filemap.size() == 0)
             continue;
         Session * sess = new Session(mach, ovr.start);
+        sess->set_first(quint64(ovr.start)*1000L);
+        sess->set_last(quint64(ovr.end)*1000L);
         ovr.sess = sess;
 
         for (auto mit=ovr.filemap.begin(), mend=ovr.filemap.end(); mit != mend; ++mit) {
             const QString & filename = mit.value();
             const QString & fullpath = resday->files[filename];
-//            QString ext = filename.section("_", -1).section(".",0,0).toUpper();
             EDFType type = lookupEDFType(filename);
 
 #ifdef SESSION_DEBUG
@@ -2057,8 +2127,15 @@ void ResDayTask::run()
         if (sess->length() == 0) {
             // we want empty sessions even though they are crap
             qDebug() << "Session" << sess->session()
-            << "["+QDateTime::fromTime_t(sess->session()).toString("MMM dd, yyyy hh:mm:ss")+"]"
-            << "has zero duration";
+                << "["+QDateTime::fromTime_t(sess->session()).toString("MMM dd, yyyy hh:mm:ss")+"]"
+                << "has zero duration";
+        }
+        if (sess->length() < 0) {
+            // we want empty sessions even though they are crap
+            qDebug() << "Session" << sess->session()
+                << "["+QDateTime::fromTime_t(sess->session()).toString("MMM dd, yyyy hh:mm:ss")+"]"
+                << "has negative duration";
+            qDebug() << "Start:" << sess->realFirst() << "End:" << sess->realLast();
         }
 
         if (resday->str.date.isValid()) {
@@ -2129,6 +2206,7 @@ void ResDayTask::run()
 
         // Free the memory used by this session
         sess->TrashEvents();
+//      delete sess;
     }   // end for-loop walking the overlaps (file groups per session
 }
 
