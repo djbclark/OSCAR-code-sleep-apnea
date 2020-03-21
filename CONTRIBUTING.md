@@ -31,7 +31,7 @@ Setting aside the religious wars that can arise over any development methodology
         git clone https://gitlab.com/my-repo/OSCAR-code.git
         cd OSCAR-code
         git checkout -b my-branch
-    **Note: Because OSCAR includes the branch name in its [version string|https://semver.org/spec/v2.0.0.html], the branch name must contain only alphanumeric characters or "-" ([0-9a-zA-Z-]).**
+    **Note:** Because OSCAR includes the branch name in its [version string](https://semver.org/spec/v2.0.0.html), **the branch name must contain only alphanumeric characters or "-"** ([0-9a-zA-Z-]).
 
 2. Write your code, committing to your branch as you go, using `git add` and `git commit -a`.
 
