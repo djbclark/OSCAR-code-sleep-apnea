@@ -31,6 +31,7 @@
 #include <QStandardPaths>
 #include <QDesktopServices>
 #include <QScreen>
+#include <QStorageInfo>
 #include <cmath>
 
 #include "common_gui.h"
@@ -67,6 +68,13 @@
 #include <QOpenGLFunctions>
 #endif
 
+// These global bool is set true if the runtime systems tests for Debian running under a Chrome OS LXD container
+// There are 2 (and mjphyi suggests these remain until other ChromeOS Linux containers are tested.`
+bool Likely_Crostini_Debian;	// its declaration may need to move from mainwindow.h to some more global .h file
+bool VeryLikely_Crostini_Debian;	// its declaration may need to move from mainwindow.h to some more global .h file
+// This global is set true if a removable drive, sharable by Linux, is inserted
+static bool Crostini_Debian_insert;
+ 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow)
@@ -746,6 +754,94 @@ void MainWindow::importCPAPBackups()
     }
 }
 
+/* Not so brief notes on importing from SD Cards on the Debian Linux subsystem of Chrome OS
+ * As in the Oscar wiki, the term ChromeBook is used to mean both ChromeBooks and ChromeBoxes.
+ * As of April 2020, Google names its Linux in a container subsystem as "Linux(Beta)" aka "Crostini".
+ * In this note you will oftern see references to "Debian Linux under Chrome OS". You may believe that the term "Debian"
+ * may be removed from that string. It is intentionally there because although the default container loaded in Crostini is
+ * a Debian one, it is currently possible to load other Linux Distros, and we currently do not know if they will behave the way Debian does.
+ *
+ * As of Chrome OS (used on ChromeBooks and ChromeBoxes) Version 80, the default Linux run in a secure LXD container is Debian Buster
+ * for both x86_64 and aarch64 architectures.
+ * In time, other Linux distros will be made easy to use, and possibly supported by the Oscar Team.
+ *
+ * The 64 bit Debian Oscar package from Release 1.0.1 runs on Chrome OS (under Debian Linux) and starting with Oscar 1.1.0 Beta-2,
+ * there is also a 64 bit package for aarch64 ChromeBooks built from the same source.
+ *
+ * This can't really even be called a port, to Oscar, it IS running under Debian Linux.
+ * The only issue is with importing data from SD Cards. Oscar runs under Linux, so they must be imported from a Linux pathname. 
+ * For security reasons, google has required that for a removable device to be accessible to Linux, 
+ * the user must use Chrome OS to mark the device as "shared with Linux".
+ *
+ * After that is done, Oscar may be import from the SD Card by specifying a pathname from which to import data.
+ *
+ * Doing this is simplified by google's choice of where the SD Cad data appears, 
+ * but also made slightly more complex by google's notion of how to name the directory containing the SD Card data, 
+ * and because the devices do not appear to Linux as mounted.
+ *
+ * Where do the devices appear in the Linux filesystem namespace?
+ * Google arranges for all external removable storage to appear to Linux as directories in the directory
+ * "/mnt/chromeos/removable". The "removable" directory does not exist until a removable device that us shared with Linux is inserted. 
+ * The "removable" directory goes away when all removable devices are  "safely removed" from Chrome OS.
+ *
+ * The algorithm used by Linux cannot be used because google does not allow Linux to list these directories as mounted, ie they have no
+ * entry in the Linux mount table, they merely have a directory name in /mnt/chromeos/removable if present. 
+ *
+ * This causes an issue with the "help the user by finding their SD Card data so they don't have to tell Oscar" code, because Google's way of 
+ * making the SD Card appear isn't the same as other native Debian Linux.
+ *
+ * How can the devices be found if they don't apear in the mount table?
+ * If a device has been inserted and has been marked (only required once) as "shared with Linux", then the directory "removable" 
+ * appears in the directory "/mnt/chromeos". The best solution so far found is to look for the appearance of this directory "removable", 
+ * and when it appears, treat all directories under that as potential SD Cards, no matter what their name is.
+ *
+ * 2 bool variables are made global, named
+ * Likely_Crostini_Debian;     A runtime flag for deciding that we are running Debian in a container under chrome OS. Should be global.
+ * and
+ * bool Crostini_Debian_insert; A runtime flag indicating that Debian Linux running under Chrome OS can see removable storage devices. 
+ *      Crostini_Debian_insert will be static in mainwindow.cpp unless other uses besides user reminders are found.
+ *
+ * The purpose of making Likely_Crostini_Debian global is so that it may be used elsewhere in Oscar.
+ * Knowing that Oscar is not running on bare hardware may be useful at a later date.
+ *
+ * Knowing that Oscar is running in a container, and that removable devices are not seen may be a useful prompt to the user who has forgotten
+ * to mark their devices as "shared with Linux".
+ *
+ * What ways are there to get a CPAP SD Card into a ChromeBook or ChromeBox?
+ * Most Chrome devices have an SD Card slot, but it may be a full size one or a micro slot, so users may decide to use an SD Card to USB adapter.
+ * If the SDD Card device has NOT been given a name (Windows volume name or label), then 
+ * there will only be 2 pathnames (as of April 2020) by which an SD Card may be read by Oscar under Debian under Chrome OS.
+ * '/mnt/chromeos/removable/SD Card' or
+ * '/mnt/chromeos/removable/USB Drive' 
+ * However if someone has put in a volume label then the card will appear named by the volume name in the "removable" directory.
+ *
+ * The presence of this directory "removable" is used as a gating factor to search for removable drives, and its state is also recorded in the
+ * static bool Crostini_Debian_insert. If the 20 second timer expires and this flag is not set, then the user can be "helped" by a prompt
+ * asking if they remembered to set "share with Linux" for any drive they inserted.
+ *
+ * Also there is no portable way to detect that we are running in Debian but under Chrome OS, so mjphyi has invented one, based on the presence of
+ *  directories. By themselves, none of these are a foolproof test, but in combination, and used withing a test of Q_OS_LINUX it should be adequate.
+ *  Directories believed to be always present under Debian Linux under Chrome OS are:
+ *  1	/mnt/chromeos
+ *  2	/opt/google/cros-containers
+ *  Using these 2 together as a first level test
+ *  a 3rd condition has been added which should be more robust. The mount point of /mnt/chromeos containst a filesystem of "9p" (as in Bell Labs 
+ *  plan 9 from outer space) and appears in /etc/mtab as 
+ *  the line "9p /mnt/chromeos 9p rw,sync,dirsync,nosuid,nodev,noexec,relatime,access=any,trans=fd,rfd=26,wfd=26 0 0".
+ *
+ *  Testing for a mount of /mnt/chromeos with displayName and fileSystemType of "9p" using QStorageInfo is the second level test
+ *  We could check the mountedness of tdir2 on /dev/vda and type ext4 could be another second level test, but we might be chasing google experiments.
+ *  And indeed that could VERY well be true, because on aarch64, it's mounted on /dev/vdb
+ *
+ *  Looking for an executing "sommelier" in the container could be a third level test
+ *  Should we also look in Debian_native for something that isn't in Debian_Crostini ???
+ *
+ *  mjphyi thinks that condition 3 is actually a better test than 1 or 2, but the fact remains that in the medium term, this is all subject to 
+ *  Google's whims for Chrome OS. So he's left space/hooks  for adjustments. Or those could be dispensed with.	Eventually. 
+ *  As other Crostini containers will be supported. The US list can be found at https://us.images.linuxcontainers.org
+ *
+ */
+
 #ifdef Q_OS_UNIX
 # include <stdio.h>
 # include <unistd.h>
@@ -762,6 +858,7 @@ void MainWindow::importCPAPBackups()
 #endif // Q_OS_UNIX
 
 //! \brief Returns a list of drive mountpoints
+// os, since ChromeOS/Linux support, a list of places SD Cards might be mounted
 QStringList getDriveList()
 {
     QStringList drivelist;
@@ -787,23 +884,59 @@ QStringList getDriveList()
     struct mntent *m;
     struct mntent mnt;
     char strings[4096];
+    // Test for running on Debian in a Chrome OS LXD container
+    QDir tdir1("/mnt/chromeos");
+	QDir tdir2("/opt/google/cros-containers");
+	QDir tdir3("/mnt/chromeos/removable");
 
-    // NOTE: getmntent_r is a GNU extension, requiring glibc.
-    while ((m = getmntent_r(mtab, &mnt, strings, sizeof(strings)))) {
+    if ((Likely_Crostini_Debian = (tdir1.exists() && tdir2.exists()))) {		// Simple first level tests
+		qDebug() << "Oscar running on Debian believed to be in a Chrome OS container";
 
-        struct statfs fs;
-        if ((mnt.mnt_dir != NULL) && (statfs(mnt.mnt_dir, &fs) == 0)) {
-            QString name = mnt.mnt_dir;
-            quint64 size = fs.f_blocks * fs.f_bsize;
+		VeryLikely_Crostini_Debian = false;	// default value, can be set true in loop below
+    	for (auto vol : QStorageInfo::mountedVolumes()) {						// Second level test
+			if((vol.device() == "9p") && (vol.displayName() == "/mnt/chromeos") && (vol.fileSystemType() == "9p")) {
+				qDebug() << "Oscar running on Debian firmly believed to be in a Chrome OS container";
+    			VeryLikely_Crostini_Debian = true; // With these 2 flags, some sort of error recovery back to Debian native should be possible.
+				// Eventually this code will invoke a new class method for all supported <linux_distro>_Crostini alternatives
+    		}
+    	}
+		
+    	if (VeryLikely_Crostini_Debian) {
+    		if ((Crostini_Debian_insert = tdir3.exists())) {
+				qDebug() << "Oscar user has a removable drive visible to Linux, drivelist empty.";
+				tdir3.setFilter(QDir::Dirs | QDir::NoSymLinks | QDir::NoDotAndDotDot);
+				QFileInfoList list = tdir3.entryInfoList();
+				for (int i=0; i<list.size(); i++) {
+					QFileInfo fileInfo = list.at(i);
+					drivelist << fileInfo.canonicalFilePath();
+					qDebug() << "Added path " << i << " to drivelist " << fileInfo.canonicalFilePath();
+				}
+				qDebug() << "drivelist size = " << list.size();
+			}
+		} else {
+			qDebug() << "We are now in the state of Likely_Crostini_Debian && !VeryLikely_Crostini_Debian.";
+			qDebug() << "What now, Internal error: stop, or Error recovery? meaning try to get back to Debian native";
+			// or just let this else be the else that goes to Debian_native
+		}
+    } else {
+	// This is the code for conventional Linux, not under Chrome OS
+    	// NOTE: getmntent_r is a GNU extension, requiring glibc.
+    	while ((m = getmntent_r(mtab, &mnt, strings, sizeof(strings)))) {
 
-            if (size > 0) { // this should theoretically ignore /dev, /proc, /sys etc..
-                drivelist.push_back(name);
-            }
-//            quint64 free = fs.f_bfree * fs.f_bsize;
-//            quint64 avail = fs.f_bavail * fs.f_bsize;
-        }
-    }
-    endmntent(mtab);
+        	struct statfs fs;
+        	if ((mnt.mnt_dir != NULL) && (statfs(mnt.mnt_dir, &fs) == 0)) {
+            	QString name = mnt.mnt_dir;
+            	quint64 size = fs.f_blocks * fs.f_bsize;
+
+            	if (size > 0) { // this should theoretically ignore /dev, /proc, /sys etc..
+                	drivelist.push_back(name);
+            	}
+//              quint64 free = fs.f_bfree * fs.f_bsize;
+//              quint64 avail = fs.f_bavail * fs.f_bsize;
+        	}
+    	}
+    	endmntent(mtab);
+	}
 
 #elif defined(Q_OS_WIN) || defined(Q_OS_HAIKU)
     QFileInfoList list = QDir::drives();
@@ -895,6 +1028,15 @@ QList<ImportPath> MainWindow::detectCPAPCards()
             QApplication::processEvents();
         }
     } while (detectedCards.size() == 0);
+
+#if defined (Q_OS_LINUX)
+	if (VeryLikely_Crostini_Debian && (!Crostini_Debian_insert)) {
+		// This seems like a good place to remind the ChromeBook user that they may have forgotted to mark their SD Card
+		// as "shared with Linux" with the Chrome OS Files App
+		// It should certainly be more friendly than this qDebug() call, but that is better than nothing
+		qDebug() << "Oscar can't see any SD Cards. If you did insert it, did you remember to set \"shared with Linux\" with the Files App?";
+	}
+#endif
 
     popup.hide();
     popup.disconnect(&skipbtn, SIGNAL(clicked()), &popup, SLOT(hide()));

@@ -68,6 +68,10 @@ class MainWindow;
 
  */
 
+// These global bool variables are set true if the runtime systems tests for Debian running under a Chrome OS LXD container
+extern bool Likely_Crostini_Debian;
+extern bool VeryLikely_Crostini_Debian;
+
 // * \section install_sec Installation
 
 extern QStatusBar *qstatusbar;
