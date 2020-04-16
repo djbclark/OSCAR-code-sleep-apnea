@@ -1,0 +1,9 @@
+
+	This directory contains some sample files for /etc/mtab on
+
+Opensuse Tumbleweed
+Opensuse Leap 15.1
+Debian Buster under Chrome OS aka Crostini. This file is from a time when an SD Card was plugged in, and accessible to Debian, but it is not mounted
+in the conventional sense. For more detail, see notes in oscar/mainwindow.cpp
+
+The 2opensuse files show that there are lots of mtab entries on modern Linux systems. Scanning all of these would be a bad idea.
