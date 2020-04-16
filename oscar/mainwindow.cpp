@@ -1031,7 +1031,7 @@ QList<ImportPath> MainWindow::detectCPAPCards()
 
 #if defined (Q_OS_LINUX)
 	if (VeryLikely_Crostini_Debian && (!Crostini_Debian_insert)) {
-		// This seems like a good place to remind the ChromeBook user that they may have forgotted to mark their SD Card
+		// This seems like a good place to remind the ChromeBook user that they may have forgotten to mark their SD Card
 		// as "shared with Linux" with the Chrome OS Files App
 		// It should certainly be more friendly than this qDebug() call, but that is better than nothing
 		qDebug() << "Oscar can't see any SD Cards. If you did insert it, did you remember to set \"shared with Linux\" with the Files App?";
