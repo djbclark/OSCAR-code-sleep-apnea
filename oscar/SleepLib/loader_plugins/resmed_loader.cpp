@@ -95,8 +95,8 @@ void ResmedLoader::initChannels()
     chan->addOption(6, QObject::tr("VPAPauto"));
     chan->addOption(7, QObject::tr("ASV"));
     chan->addOption(8, QObject::tr("ASVAuto"));
-    chan->addOption(9, QObject::tr("?9?"));
-    chan->addOption(10, QObject::tr("?10?"));
+    chan->addOption(9, QObject::tr("iVAPS"));
+    chan->addOption(10, QObject::tr("PAC"));
     chan->addOption(11, QObject::tr("Auto for Her"));
 
     channel.add(GRP_CPAP, chan = new Channel(RMS9_EPR = 0xe201, SETTING, MT_CPAP,   SESSION,
