@@ -2497,7 +2497,7 @@ void MainWindow::on_actionImport_Viatom_Data_triggered()
     ViatomLoader viatom;
 
     QFileDialog w;
-    w.setFileMode(QFileDialog::AnyFile);
+    w.setFileMode(QFileDialog::ExistingFiles); // Crimson Nape - changed fro 'AnyFile' 04/17/21
     w.setWindowFlags(this->windowFlags() & ~Qt::WindowContextHelpButtonHint);
     w.setOption(QFileDialog::ShowDirsOnly, false);
     w.setNameFilters(viatom.getNameFilter());
@@ -2506,7 +2506,7 @@ void MainWindow::on_actionImport_Viatom_Data_triggered()
     w.setOption(QFileDialog::DontUseNativeDialog, true);
     // And since the non-native dialog can't select both directories and files,
     // it needs the following to enable selecting multiple files.
-    w.setFileMode(QFileDialog::ExistingFiles);
+    // w.setFileMode(QFileDialog::ExistingFiles);  Commented out because it is a duplicate of #2500
 #endif
 
     if (w.exec() == QFileDialog::Accepted) {
