@@ -9,6 +9,9 @@
 #include "prs1tests.h"
 #include "sessiontests.h"
 
+#include "../SleepLib/loader_plugins/prs1_loader.h"
+#include "../SleepLib/loader_plugins/prs1_parser.h"
+
 #define TESTDATA_PATH "./testdata/"
 
 static PRS1Loader* s_loader = nullptr;
@@ -124,12 +127,6 @@ void PRS1Tests::testSessionsToYaml()
 
 // ====================================================================================================
 
-static QString ts(qint64 msecs)
-{
-    // TODO: make this UTC so that tests don't vary by where they're run
-    return QDateTime::fromMSecsSinceEpoch(msecs).toString(Qt::ISODate);
-}
-
 static QString dur(qint64 msecs)
 {
     qint64 s = msecs / 1000L;
@@ -227,11 +224,11 @@ void ChunkToYaml(QTextStream & out, PRS1DataChunk* chunk, bool ok)
         dump_data = false;
         out << "  events:" << '\n';
         for (auto & e : chunk->m_parsedData) {
-            QString name = _PRS1ParsedEventName(e);
+            QString name = e->typeName();
             if (name == "raw" || name == "unknown") {
                 dump_data = true;
             }
-            QMap<QString,QString> contents = _PRS1ParsedEventContents(e);
+            QMap<QString,QString> contents = e->contents();
             if (name == "setting" && contents.size() == 1) {
                 out << "  - set_" << contents.firstKey() << ": " << contents.first() << '\n';
             }
