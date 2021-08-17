@@ -1145,7 +1145,7 @@ void Session::updateCountSummary(ChannelID code)
         if (  ! ch_p->isNull() ) {
             if ( (ch_p->type() & FLAG) == FLAG )
                 return;
-                qDebug() << "No valuesummary for channel " << ch_p->label();
+            qDebug() << "No valuesummary for channel " << ch_p->label();
         }
         qDebug() << "No valuesummary for channel (hex)" << QString::number(code, 16);
         return;
