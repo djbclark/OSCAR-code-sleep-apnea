@@ -11,8 +11,10 @@
 
 #include "../SleepLib/loader_plugins/prs1_loader.h"
 #include "../SleepLib/loader_plugins/prs1_parser.h"
+#include "../SleepLib/importcontext.h"
 
 #define TESTDATA_PATH "./testdata/"
+//#define TEST_OSCAR_CALCS
 
 static PRS1Loader* s_loader = nullptr;
 static void iterateTestCards(const QString & root, void (*action)(const QString &));
@@ -23,6 +25,12 @@ void PRS1Tests::initTestCase(void)
 {
     p_profile = new Profile(TESTDATA_PATH "profile/", false);
 
+#ifdef TEST_OSCAR_CALCS
+    p_pref = new Preferences("Preferences");
+    p_pref->Open();
+    AppSetting = new AppWideSetting(p_pref);
+#endif
+
     schema::init();
     PRS1Loader::Register();
     s_loader = dynamic_cast<PRS1Loader*>(lookupLoader(prs1_class_name));
@@ -32,6 +40,9 @@ void PRS1Tests::cleanupTestCase(void)
 {
     delete p_profile;
     p_profile = nullptr;
+#ifdef TEST_OSCAR_CALCS
+    delete p_pref;
+#endif
 }
 
 
@@ -80,6 +91,13 @@ void parseAndEmitSessionYaml(const QString & path)
 {
     qDebug() << path;
 
+    ImportContext* ctx = new ProfileImportContext(p_profile);
+    s_loader->SetContext(ctx);
+
+    ctx->connect(ctx, &ImportContext::importEncounteredUnexpectedData, [=]() {
+        qWarning() << "*** Found unexpected data";
+    });
+
     // This mirrors the functional bits of PRS1Loader::OpenMachine.
     // TODO: Refactor PRS1Loader so that the tests can use the same
     // underlying logic as OpenMachine rather than duplicating it here.
@@ -89,13 +107,14 @@ void parseAndEmitSessionYaml(const QString & path)
     int sessionid_base;
     sessionid_base = s_loader->FindSessionDirsAndProperties(path, paths, propertyfile);
 
-    Machine *m = s_loader->CreateMachineFromProperties(propertyfile);
-    if (m == nullptr) {
+    bool supported = s_loader->CreateMachineFromProperties(propertyfile);
+    if (!supported) {
         qWarning() << "*** Skipping unsupported machine!";
         return;
     }
+    Machine* m = ctx->m_machine;
 
-    s_loader->ScanFiles(paths, sessionid_base, m);
+    s_loader->ScanFiles(paths, sessionid_base);
     
     // Each session now has a PRS1Import object in m_MLtasklist
     QList<ImportTask*>::iterator i;
@@ -109,14 +128,17 @@ void parseAndEmitSessionYaml(const QString & path)
         // Emit the parsed session data to compare against our regression benchmarks
         Session* session = import->session;
         QString outpath = prs1OutputPath(path, m->serial(), session->session(), "-session.yml");
+#ifdef TEST_OSCAR_CALCS
+        session->s_events_loaded = true;
+        session->UpdateSummaries();
+#endif
         SessionToYaml(outpath, session, ok);
         
         delete session;
         delete task;
     }
-    if (s_loader->m_unexpectedMessages.count() > 0) {
-        qWarning() << "*** Found unexpected data";
-    }
+
+    delete ctx;
 }
 
 void PRS1Tests::testSessionsToYaml()
@@ -263,17 +285,21 @@ void parseAndEmitChunkYaml(const QString & path)
     bool FV = false;  // set this to true to emit family/familyVersion for this path
     qDebug() << path;
 
+    ImportContext* ctx = new ProfileImportContext(p_profile);
+    s_loader->SetContext(ctx);
+
     QHash<QString,QSet<quint64>> written;
     QStringList paths;
     QString propertyfile;
     int sessionid_base;
     sessionid_base = s_loader->FindSessionDirsAndProperties(path, paths, propertyfile);
 
-    Machine *m = s_loader->CreateMachineFromProperties(propertyfile);
-    if (m == nullptr) {
+    bool supported = s_loader->CreateMachineFromProperties(propertyfile);
+    if (!supported) {
         qWarning() << "*** Skipping unsupported machine!";
         return;
     }
+    Machine* m = ctx->m_machine;
 
     // This mirrors the functional bits of PRS1Loader::ScanFiles.
     
@@ -370,6 +396,8 @@ void parseAndEmitChunkYaml(const QString & path)
             file.close();
         }
     }
+    
+    delete ctx;
     
     p_profile->removeMachine(m);
     delete m;

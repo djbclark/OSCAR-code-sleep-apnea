@@ -31,21 +31,11 @@ MachineLoader::MachineLoader() :QObject(nullptr)
     m_abort = false;
     m_type = MT_UNKNOWN;
     m_status = NEUTRAL;
+    m_ctx = nullptr;
 }
 
 MachineLoader::~MachineLoader()
 {
-}
-
-void MachineLoader::unsupported(Machine * m)
-{
-    if (m == nullptr) {
-        qCritical("MachineLoader::unsupported(Machine *) called with null machine object");
-        return;
-    }
-
-    m->setUnsupported(true);
-    emit machineUnsupported(m);
 }
 
 void MachineLoader::addSession(Session * sess)
@@ -200,6 +190,7 @@ void DestroyLoaders()
     m_loaders.clear();
 }
 
+/*
 QList<ChannelID> CPAPLoader::eventFlags(Day * day)
 {
     Machine * mach = day->machine(MT_CPAP);
@@ -221,6 +212,7 @@ QList<ChannelID> CPAPLoader::eventFlags(Day * day)
 
     return list;
 }
+*/
 
 bool uncompressFile(QString infile, QString outfile)
 {

@@ -9,11 +9,7 @@
 
 #ifndef PRS1LOADER_H
 #define PRS1LOADER_H
-//#include <map>
-//using namespace std;
-#include "SleepLib/machine.h" // Base class: MachineLoader
 #include "SleepLib/machine_loader.h"
-#include "SleepLib/profiles.h"
 
 #ifdef UNITTEST_MODE
 #define private public
@@ -28,20 +24,6 @@
 const int prs1_data_version = 20;
 //
 //********************************************************************************************
-#if 0  // Apparently unused
-/*! \class PRS1
-    \brief PRS1 customized machine object (via CPAP)
-    */
-class PRS1: public CPAP
-{
-  public:
-    PRS1(Profile *, MachineID id = 0);
-    virtual ~PRS1();
-};
-
-
-const int max_load_buffer_size = 1024 * 1024;
-#endif
 const QString prs1_class_name = STR_MACH_PRS1;
 
 QString ts(qint64 msecs);
@@ -57,7 +39,6 @@ struct PRS1Waveform {
     quint8 sample_format;
 };
 
-
 class PRS1DataChunk;
 class PRS1ParsedEvent;
 
@@ -68,7 +49,7 @@ class PRS1Loader;
 class PRS1Import:public ImportTask
 {
 public:
-    PRS1Import(PRS1Loader * l, SessionID s, Machine * m, int base): loader(l), sessionid(s), mach(m), m_sessionid_base(base) {
+    PRS1Import(PRS1Loader * l, SessionID s, int base): loader(l), sessionid(s), m_sessionid_base(base) {
         summary = nullptr;
         compliance = nullptr;
         session = nullptr;
@@ -118,7 +99,6 @@ protected:
     Session * session;
     PRS1Loader * loader;
     SessionID sessionid;
-    Machine * mach;
     QHash<ChannelID,EventList*> m_importChannels;  // map channel ID to the session's current EventList*
 
     int summary_duration;
@@ -128,8 +108,6 @@ protected:
     CPAPMode importMode(int mode);
     //! \brief Parse all the chunks in a single machine session
     bool ParseSession(void);
-    //! \brief Save parsed session data to the database
-    void SaveSessionToDatabase(void);
 
     //! \brief Cache a single slice from a summary or compliance chunk.
     void AddSlice(qint64 chunk_start, PRS1ParsedEvent* e);
@@ -140,8 +118,6 @@ protected:
     // State that needs to persist between individual events:
     EventDataType m_currentPressure;
     bool m_calcPSfromSet;
-    bool m_calcLeaks;
-    EventDataType m_lpm4, m_ppm;
 
     //! \brief Advance the current mask-on slice if needed and update import data structures accordingly.
     bool UpdateCurrentSlice(PRS1DataChunk* chunk, qint64 t);
@@ -178,12 +154,12 @@ class PRS1Loader : public CPAPLoader
   public:
     PRS1Loader();
     virtual ~PRS1Loader();
-
+    
     //! \brief Peek into PROP.TXT or properties.txt at given path, and return it as a normalized key/value hash
     bool PeekProperties(const QString & filename, QHash<QString,QString> & props);
     
     //! \brief Peek into PROP.TXT or properties.txt at given path, and use it to fill MachineInfo structure
-    bool PeekProperties(MachineInfo & info, const QString & path, Machine * mach = nullptr);
+    bool PeekProperties(MachineInfo & info, const QString & path);
 
     //! \brief Detect if the given path contains a valid Folder structure
     virtual bool Detect(const QString & path);
@@ -232,9 +208,6 @@ class PRS1Loader : public CPAPLoader
     QHash<SessionID, PRS1Import*> sesstasks;
 
   protected:
-    QString last;
-    QHash<QString, Machine *> PRS1List;
-
     //! \brief Returns the path of the P-Series folder (whatever case) if present on the card
     QString GetPSeriesPath(const QString & path);
 
@@ -247,37 +220,14 @@ class PRS1Loader : public CPAPLoader
     //! \brief Finds the P0,P1,... session paths and property pathname and returns the base (10 or 16) of the session filenames
     int FindSessionDirsAndProperties(const QString & path, QStringList & paths, QString & propertyfile);
 
-    //! \brief Reads the model number from the property file, evaluates its capabilities, and returns a machine instance
-    Machine* CreateMachineFromProperties(QString propertyfile);
+    //! \brief Reads the model number from the property file, evaluates its capabilities, and returns true if the machine is supported
+    bool CreateMachineFromProperties(QString propertyfile);
 
     //! \brief Scans the given directories for session data and create an import task for each logical session.
-    void ScanFiles(const QStringList & paths, int sessionid_base, Machine * m);
+    void ScanFiles(const QStringList & paths, int sessionid_base);
     
-//    //! \brief Parses "properties.txt" file containing machine information
-//    bool ParseProperties(Machine *m, QString filename);
-
-    //! \brief Parse a .005 waveform file, extracting Flow Rate waveform (and Mask Pressure data if available)
-    bool OpenWaveforms(SessionID sid, const QString & filename);
-
-    //! \brief Parse a data chunk from the .000 (brick) and .001 (summary) files.
-    bool ParseSummary(Machine *mach, qint32 sequence, quint32 timestamp, unsigned char *data,
-                      quint16 size, int family, int familyVersion);
-
-
-    QHash<SessionID, Session *> extra_session;
-
     //! \brief PRS1 Data files can store multiple sessions, so store them in this list for later processing.
     QHash<SessionID, Session *> new_sessions;
-
-    // TODO: This really belongs in a generic location that all loaders can use.
-    // But that will require retooling the overall call structure so that there's
-    // a top-level import job that's managing a specific import. Right now it's
-    // essentially managed by the importCPAP method rather than an object instance
-    // with state.
-    QMutex m_importMutex;
-    QSet<QString> m_unexpectedMessages;
-public:
-    void LogUnexpectedMessage(const QString & message);
 };
 
 

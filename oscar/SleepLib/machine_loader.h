@@ -29,6 +29,7 @@
 #endif
 
 class MachineLoader;    // forward
+class ImportContext;
 
 enum DeviceStatus { NEUTRAL, IMPORTING, LIVE, DETECTING };
 
@@ -41,11 +42,14 @@ const QString genericPixmapPath = ":/icons/mask.png";
 class MachineLoader: public QObject
 {
     Q_OBJECT
-    friend class ImportThread;
-    friend class Machine;
+    //friend class ImportThread;
+    //friend class Machine;
   public:
     MachineLoader();
     virtual ~MachineLoader();
+
+    void SetContext(ImportContext* ctx) { m_ctx = ctx; }
+    inline ImportContext* context() { return m_ctx; }
 
     //! \brief Detect if the given path contains a valid folder structure
     virtual bool Detect(const QString & path) = 0;
@@ -78,8 +82,6 @@ class MachineLoader: public QObject
 
     virtual void initChannels() {}
 
-    void unsupported(Machine * m);
-
     void addSession(Session * sess);
 
     inline MachineType type() { return m_type; }
@@ -108,9 +110,13 @@ signals:
     void setProgressMax(int max);
     void setProgressValue(int val);
     void updateMessage(QString);
-    void machineUnsupported(Machine *);
+
+    void deviceReportsUsageOnly(MachineInfo & info);
+    void deviceIsUntested(MachineInfo & info);
+    void deviceIsUnsupported(MachineInfo & info);
 
 protected:
+    ImportContext* m_ctx;
     void finishAddingSessions();
 
     static QPixmap * genericCPAPPixmap;
@@ -140,13 +146,13 @@ public:
     CPAPLoader() : MachineLoader() {}
     virtual ~CPAPLoader() {}
 
-    virtual QList<ChannelID> eventFlags(Day * day);
+    //virtual QList<ChannelID> eventFlags(Day * day);
 
     virtual QString PresReliefLabel() { return QString(""); }
     virtual ChannelID PresReliefMode() { return NoChannel; }
     virtual ChannelID PresReliefLevel() { return NoChannel; }
-    virtual ChannelID HumidifierConnected() { return NoChannel; }
-    virtual ChannelID HumidifierLevel() { return CPAP_HumidSetting; }
+    //virtual ChannelID HumidifierConnected() { return NoChannel; }
+    //virtual ChannelID HumidifierLevel() { return CPAP_HumidSetting; }
     virtual ChannelID CPAPModeChannel() { return CPAP_Mode; }
     virtual void initChannels() {}
 

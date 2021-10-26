@@ -18,6 +18,7 @@
 #include <cmath>
 
 #include "SleepLib/schema.h"
+#include "SleepLib/importcontext.h"
 #include "prs1_loader.h"
 #include "prs1_parser.h"
 #include "SleepLib/session.h"
@@ -47,15 +48,6 @@ QString ts(qint64 msecs)
 {
     // TODO: make this UTC so that tests don't vary by where they're run
     return QDateTime::fromMSecsSinceEpoch(msecs).toString(Qt::ISODate);
-}
-
-
-// TODO: See the LogUnexpectedMessage TODO about generalizing this for other loaders.
-void PRS1Loader::LogUnexpectedMessage(const QString & message)
-{
-    m_importMutex.lock();
-    m_unexpectedMessages += message;
-    m_importMutex.unlock();
 }
 
 
@@ -658,7 +650,7 @@ bool PRS1Loader::PeekProperties(const QString & filename, QHash<QString,QString>
     return props.size() > 0;
 }
 
-bool PRS1Loader::PeekProperties(MachineInfo & info, const QString & filename, Machine * mach)
+bool PRS1Loader::PeekProperties(MachineInfo & info, const QString & filename)
 {
     QHash<QString,QString> props;
     if (!PeekProperties(filename, props)) {
@@ -682,9 +674,9 @@ bool PRS1Loader::PeekProperties(MachineInfo & info, const QString & filename, Ma
             if (!ok) qWarning() << "ProductType" << props[key];
             skip = true;
         }
-        if (!mach || skip) continue;
+        if (skip) continue;
 
-        mach->properties[key] = props[key];
+        info.properties[key] = props[key];
     };
 
     if (!modelnum.isEmpty()) {
@@ -737,9 +729,19 @@ int PRS1Loader::Open(const QString & selectedPath)
     }
 
     // Import each machine, from oldest to newest.
+    // TODO: Loaders should return the set of machines during detection, so that Open() will
+    // open a unique device, instead of surprising the user.
     int c = 0;
     for (auto & machinePath : machines) {
-        c += OpenMachine(machinePath);
+        if (m_ctx == nullptr) {
+            qWarning() << "PRS1Loader::Open() called without a valid m_ctx object present";
+            return 0;
+        }
+        int imported = OpenMachine(machinePath);
+        if (imported > 0) {  // don't let errors < 0 suppress subsequent successes
+            c += imported;
+        }
+        m_ctx->FlushUnexpectedMessages();
     }
     return c;
 }
@@ -747,10 +749,7 @@ int PRS1Loader::Open(const QString & selectedPath)
 
 int PRS1Loader::OpenMachine(const QString & path)
 {
-    if (p_profile == nullptr) {
-        qWarning() << "PRS1Loader::OpenMachine() called without a valid p_profile object present";
-        return 0;
-    }
+    Q_ASSERT(m_ctx);
 
     qDebug() << "Opening PRS1 " << path;
     QDir dir(path);
@@ -770,15 +769,16 @@ int PRS1Loader::OpenMachine(const QString & path)
     int sessionid_base;
     sessionid_base = FindSessionDirsAndProperties(path, paths, propertyfile);
 
-    Machine *m = CreateMachineFromProperties(propertyfile);
-    if (m == nullptr) {
+    bool supported = CreateMachineFromProperties(propertyfile);
+    if (!supported) {
+        // Device is unsupported.
         return -1;
     }
 
     emit updateMessage(QObject::tr("Backing Up Files..."));
     QCoreApplication::processEvents();
 
-    QString backupPath = m->getBackupPath() + path.section("/", -2);
+    QString backupPath = context()->GetBackupPath() + path.section("/", -2);
 
     if (QDir::cleanPath(path).compare(QDir::cleanPath(backupPath)) != 0) {
         copyPath(path, backupPath);
@@ -788,7 +788,7 @@ int PRS1Loader::OpenMachine(const QString & path)
     QCoreApplication::processEvents();
 
     // Walk through the files and create an import task for each logical session.
-    ScanFiles(paths, sessionid_base, m);
+    ScanFiles(paths, sessionid_base);
 
     int tasks = countTasks();
 
@@ -797,28 +797,7 @@ int PRS1Loader::OpenMachine(const QString & path)
 
     runTasks(AppSetting->multithreading());
 
-    emit updateMessage(QObject::tr("Finishing up..."));
-    QCoreApplication::processEvents();
-
-    finishAddingSessions();
-
-    if (m_unexpectedMessages.count() > 0 && p_profile->session->warnOnUnexpectedData()) {
-        // Compare this to the list of messages previously seen for this machine
-        // and only alert if there are new ones.
-        QSet<QString> newMessages = m_unexpectedMessages - m->previouslySeenUnexpectedData();
-        if (newMessages.count() > 0) {
-            // TODO: Rework the importer call structure so that this can become an
-            // emit statement to the appropriate import job.
-            QMessageBox::information(QApplication::activeWindow(),
-                                     QObject::tr("Untested Data"),
-                                     QObject::tr("Your Philips Respironics %1 (%2) generated data that OSCAR has never seen before.").arg(m->getInfo().model).arg(m->getInfo().modelnumber) +"\n\n"+
-                                     QObject::tr("The imported data may not be entirely accurate, so the developers would like a .zip copy of this machine's SD card and matching Encore .pdf reports to make sure OSCAR is handling the data correctly.")
-                                     ,QMessageBox::Ok);
-            m->previouslySeenUnexpectedData() += newMessages;
-        }
-    }
-    
-    return m->unsupported() ? -1 : tasks;
+    return tasks;
 }
 
 
@@ -859,84 +838,45 @@ int PRS1Loader::FindSessionDirsAndProperties(const QString & path, QStringList &
 }
 
 
-Machine* PRS1Loader::CreateMachineFromProperties(QString propertyfile)
+bool PRS1Loader::CreateMachineFromProperties(QString propertyfile)
 {
+    MachineInfo info = newInfo();
     QHash<QString,QString> props;
     if (!PeekProperties(propertyfile, props) || !s_PRS1ModelInfo.IsSupported(props)) {
-        QString name;
         if (props.contains("ModelNumber")) {
             int family, familyVersion;
             getVersionFromProps(props, family, familyVersion);
             QString model_number = props["ModelNumber"];
             qWarning().noquote() << "Model" << model_number << QString("(F%1V%2)").arg(family).arg(familyVersion) << "unsupported.";
-            name = QObject::tr("model %1").arg(model_number);
+            info.modelnumber = QObject::tr("model %1").arg(model_number);
         } else if (propertyfile.endsWith("PROP.BIN")) {
             // TODO: Remove this once DS2 is supported.
             qWarning() << "DreamStation 2 not supported:" << propertyfile;
-            name = QObject::tr("DreamStation 2");
+            info.modelnumber = QObject::tr("DreamStation 2");
         } else {
             qWarning() << "Unable to identify model or series!";
-            name = QObject::tr("unknown model");
+            info.modelnumber = QObject::tr("unknown model");
         }
-#ifndef UNITTEST_MODE
-        QMessageBox::information(QApplication::activeWindow(),
-                                 QObject::tr("Machine Unsupported"),
-                                 QObject::tr("Sorry, your Philips Respironics CPAP machine (%1) is not supported yet.").arg(name) +"\n\n"+
-                                 QObject::tr("The developers needs a .zip copy of this machine's SD card and matching Encore or Care Orchestrator .pdf reports to make it work with OSCAR.")
-                                 ,QMessageBox::Ok);
-#endif
-        return nullptr;
+        emit deviceIsUnsupported(info);
+        return false;
     }
 
-    MachineInfo info = newInfo();
     // Have a peek first to get the model number.
     PeekProperties(info, propertyfile);
 
-    if (true) {
-        if (s_PRS1ModelInfo.IsBrick(info.modelnumber) && p_profile->cpap->brickWarning()) {
-#ifndef UNITTEST_MODE
-            QApplication::processEvents();
-            QMessageBox::information(QApplication::activeWindow(),
-                                     QObject::tr("Non Data Capable Machine"),
-                                     QString(QObject::tr("Your Philips Respironics CPAP machine (Model %1) is unfortunately not a data capable model.")+"\n\n"+
-                                             QObject::tr("I'm sorry to report that OSCAR can only track hours of use and very basic settings for this machine.")).
-                                     arg(info.modelnumber),QMessageBox::Ok);
-#endif
-            p_profile->cpap->setBrickWarning(false);
-        }
+    if (s_PRS1ModelInfo.IsBrick(info.modelnumber)) {
+        emit deviceReportsUsageOnly(info);
     }
 
     // Which is needed to get the right machine record..
-    Machine *m = p_profile->CreateMachine(info);
+    m_ctx->CreateMachineFromInfo(info);
 
-    // This time supply the machine object so it can populate machine properties..
-    PeekProperties(m->info, propertyfile, m);
-    
     if (!s_PRS1ModelInfo.IsTested(props)) {
         qDebug() << info.modelnumber << "untested";
-        if (p_profile->session->warnOnUntestedMachine() && m->warnOnUntested()) {
-            m->suppressWarnOnUntested();  // don't warn the user more than once
-#ifndef UNITTEST_MODE
-            // TODO: Rework the importer call structure so that this can become an
-            // emit statement to the appropriate import job.
-            QMessageBox::information(QApplication::activeWindow(),
-                                 QObject::tr("Machine Untested"),
-                                 QObject::tr("Your Philips Respironics CPAP machine (Model %1) has not been tested yet.").arg(info.modelnumber) +"\n\n"+
-                                 QObject::tr("It seems similar enough to other machines that it might work, but the developers would like a .zip copy of this machine's SD card and matching Encore .pdf reports to make sure it works with OSCAR.")
-                                 ,QMessageBox::Ok);
-
-#endif
-        }
+        emit deviceIsUntested(info);
     }
 
-    // Mark the machine in the profile as unsupported.
-    if (!s_PRS1ModelInfo.IsSupported(props)) {
-        if (!m->unsupported()) {
-            unsupported(m);
-        }
-    }
-    
-    return m;
+    return true;
 }
 
 
@@ -962,8 +902,9 @@ static QString chunkComparison(const PRS1DataChunk* a, const PRS1DataChunk* b)
 
 }
 
-void PRS1Loader::ScanFiles(const QStringList & paths, int sessionid_base, Machine * m)
+void PRS1Loader::ScanFiles(const QStringList & paths, int sessionid_base)
 {
+    Q_ASSERT(m_ctx);
     SessionID sid;
     long ext;
 
@@ -975,7 +916,6 @@ void PRS1Loader::ScanFiles(const QStringList & paths, int sessionid_base, Machin
 
     sesstasks.clear();
     new_sessions.clear(); // this hash is used by OpenFile
-    m_unexpectedMessages.clear();
 
 
     PRS1Import * task = nullptr;
@@ -983,8 +923,8 @@ void PRS1Loader::ScanFiles(const QStringList & paths, int sessionid_base, Machin
 
     QDateTime datetime;
 
-    qint64 ignoreBefore = p_profile->session->ignoreOlderSessionsDate().toMSecsSinceEpoch()/1000;
-    bool ignoreOldSessions = p_profile->session->ignoreOlderSessions();
+    qint64 ignoreBefore = m_ctx->IgnoreSessionsOlderThan().toMSecsSinceEpoch()/1000;
+    bool ignoreOldSessions = m_ctx->ShouldIgnoreOldSessions();
     QSet<SessionID> skipped;
 
     // for each p0/p1/p2/etc... folder
@@ -1035,7 +975,7 @@ void PRS1Loader::ScanFiles(const QStringList & paths, int sessionid_base, Machin
             // chunks, which might not correspond to the filename. But before we can
             // fix this we need to come up with a reasonably fast way to filter previously
             // imported files without re-reading all of them.
-            if (m->SessionExists(sid)) {
+            if (context()->SessionExists(sid)) {
                 // Skip already imported session
                 qDebug() << path << "session already exists, skipping" << sid;
                 continue;
@@ -1060,7 +1000,7 @@ void PRS1Loader::ScanFiles(const QStringList & paths, int sessionid_base, Machin
                     // Should probably check if session already imported has this data missing..
 
                     // Create the group if we see it first..
-                    task = new PRS1Import(this, sid, m, sessionid_base);
+                    task = new PRS1Import(this, sid, sessionid_base);
                     sesstasks[sid] = task;
                     queTask(task);
                 }
@@ -1110,7 +1050,7 @@ void PRS1Loader::ScanFiles(const QStringList & paths, int sessionid_base, Machin
                     // the first available filename isn't the first session contained in the file.
                     //qDebug() << fi.canonicalFilePath() << "first session is" << chunk_sid << "instead of" << sid;
                 }
-                if (m->SessionExists(chunk_sid)) {
+                if (context()->SessionExists(chunk_sid)) {
                     qDebug() << path << "session already imported, skipping" << sid << chunk_sid;
                     delete chunk;
                     continue;
@@ -1129,7 +1069,7 @@ void PRS1Loader::ScanFiles(const QStringList & paths, int sessionid_base, Machin
                 if (it != sesstasks.end()) {
                     task = it.value();
                 } else {
-                    task = new PRS1Import(this, chunk_sid, m, sessionid_base);
+                    task = new PRS1Import(this, chunk_sid, sessionid_base);
                     sesstasks[chunk_sid] = task;
                     // save a loop an que this now
                     queTask(task);
@@ -1258,7 +1198,7 @@ static const QHash<PRS1ParsedEventType,QVector<ChannelID*>> PRS1ImportChannelMap
 
     { PRS1PeriodicBreathingEvent::TYPE, { &CPAP_PB } },
     { PRS1LargeLeakEvent::TYPE,         { &CPAP_LargeLeak } },
-    { PRS1TotalLeakEvent::TYPE,         { &CPAP_LeakTotal, &CPAP_Leak } },  // TODO: Remove CPAP_Leak if we get rid of unintentional leak calculation in the importer.
+    { PRS1TotalLeakEvent::TYPE,         { &CPAP_LeakTotal } },
     { PRS1LeakEvent::TYPE,              { &CPAP_Leak } },
 
     { PRS1RespiratoryRateEvent::TYPE,   { &CPAP_RespRate } },
@@ -1504,17 +1444,6 @@ bool PRS1Import::ImportEventChunk(PRS1DataChunk* event)
     // F5, which only reports EPAP set events, but both IPAP/EPAP average, from which PS will be calculated.
     m_calcPSfromSet = supported.contains(PRS1IPAPSetEvent::TYPE) && supported.contains(PRS1EPAPSetEvent::TYPE);
     
-    // Unintentional leak calculation, see zMaskProfile:calcLeak in calcs.cpp for explanation
-    m_calcLeaks = p_profile->cpap->calculateUnintentionalLeaks();
-    if (m_calcLeaks) {
-        // Only needed for machines that don't support it directly.
-        m_calcLeaks = (supported.contains(PRS1LeakEvent::TYPE) == false);
-    }
-    m_lpm4 = p_profile->cpap->custom4cmH2OLeaks();
-    EventDataType lpm20 = p_profile->cpap->custom20cmH2OLeaks();
-    EventDataType lpm = lpm20 - m_lpm4;
-    m_ppm = lpm / 16.0;
-
     qint64 t = qint64(event->timestamp) * 1000L;
     if (session->first() == 0) {
         qWarning() << sessionid << "Start time not set by summary?";
@@ -1698,7 +1627,7 @@ void PRS1Import::ImportEvent(qint64 t, PRS1ParsedEvent* e)
     // to be done in ImportEventChunk.
     
     const QVector<ChannelID*> & channels = PRS1ImportChannelMap[e->m_type];
-    ChannelID channel = NoChannel, PS, VS2, LEAK;
+    ChannelID channel = NoChannel, PS, VS2;
     if (channels.count() > 0) {
         channel = *channels.at(0);
     }
@@ -1750,22 +1679,6 @@ void PRS1Import::ImportEvent(qint64 t, PRS1ParsedEvent* e)
             // Decide whether to preserve that behavior or change it universally and update either this code or comment.
             duration = e->m_duration * 1000L;
             AddEvent(channel, t + duration, e->m_duration, e->m_gain);
-            break;
-
-        case PRS1TotalLeakEvent::TYPE:
-            AddEvent(channel, t, e->m_value, e->m_gain);
-            // F0 up through F0V6 doesn't appear to report unintentional leak.
-            // TODO: decide whether to keep this here, shouldn't keep it here just because it's "quicker".
-            // TODO: compare this value for the reported value for F5V1 and higher?
-            // TODO: Fix this for 0.125 gain: it assumes 0.1 (dividing by 10.0)...
-            //   Or omit, because machines with 0.125 gain report unintentional leak directly.
-            if (m_calcLeaks) { // Much Quicker doing this here than the recalc method.
-                EventDataType leak = e->m_value;
-                leak -= (((m_currentPressure/10.0f) - 4.0) * m_ppm + m_lpm4);
-                if (leak < 0) leak = 0;
-                LEAK = *channels.at(1);
-                AddEvent(LEAK, t, leak, 1);
-            }
             break;
 
         case PRS1SnoreEvent::TYPE:  // snore count that shows up in flags but not waveform
@@ -2360,8 +2273,8 @@ QList<PRS1DataChunk *> PRS1Import::CoalesceWaveformChunks(QList<PRS1DataChunk *>
     // This won't be perfect, since any coalesced chunks starting after midnight of the threshhold
     // date will also be imported, but those should be relatively few, and tolerable imprecision.
     QList<PRS1DataChunk *> coalescedAndFiltered;
-    qint64 ignoreBefore = p_profile->session->ignoreOlderSessionsDate().toMSecsSinceEpoch()/1000;
-    bool ignoreOldSessions = p_profile->session->ignoreOlderSessions();
+    qint64 ignoreBefore = loader->context()->IgnoreSessionsOlderThan().toMSecsSinceEpoch()/1000;
+    bool ignoreOldSessions = loader->context()->ShouldIgnoreOldSessions();
 
     for (auto & chunk : coalesced) {
         if (ignoreOldSessions && chunk->timestamp < ignoreBefore) {
@@ -2577,11 +2490,8 @@ void PRS1Import::ImportWaveforms()
 
 void PRS1Import::run()
 {
-    if (mach->unsupported())
-        return;
-
     if (ParseSession()) {
-        SaveSessionToDatabase();
+        loader->context()->AddSession(session);
     }
 }
 
@@ -2590,7 +2500,7 @@ bool PRS1Import::ParseSession(void)
 {
     bool ok = false;
     bool save = false;
-    session = new Session(mach, sessionid);
+    session = loader->context()->CreateSession(sessionid);
 
     do {
         if (compliance != nullptr) {
@@ -2711,27 +2621,6 @@ QList<PRS1DataChunk *> PRS1Import::ReadWaveformData(QList<QString> & files, cons
 }
 
 
-void PRS1Import::SaveSessionToDatabase(void)
-{
-    // Make sure it's saved
-    session->SetChanged(true);
-
-    // Add the session to the database
-    loader->addSession(session);
-
-    // Update indexes, process waveform and perform flagging
-    session->UpdateSummaries();
-
-    // Save is not threadsafe
-    loader->saveMutex.lock();
-    session->Store(mach->getDataPath());
-    loader->saveMutex.unlock();
-
-    // Unload them from memory
-    session->TrashEvents();
-}
-
-
 QList<PRS1DataChunk *> PRS1Loader::ParseFile(const QString & path)
 {
     QList<PRS1DataChunk *> CHUNKS;
@@ -2782,7 +2671,7 @@ QList<PRS1DataChunk *> PRS1Loader::ParseFile(const QString & path)
                     || (lastchunk->htype != chunk->htype)) {
                 QString message = "*** unexpected change in header data";
                 qWarning() << path << message;
-                LogUnexpectedMessage(message);
+                m_ctx->LogUnexpectedMessage(message);
                 // There used to be error-recovery code here, written before we checked CRCs.
                 // If we ever encounter data with a valid CRC that triggers the above warnings,
                 // we can then revisit how to handle it.
