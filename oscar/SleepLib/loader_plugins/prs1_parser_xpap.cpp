@@ -1549,7 +1549,7 @@ bool PRS1DataChunk::ParseSummaryF0V6(void)
     }
     const unsigned char * data = (unsigned char *)this->m_data.constData();
     int chunk_size = this->m_data.size();
-    static const int minimum_sizes[] = { 1, 0x2b, 9, 4, 2, 4, 1, 4, 0x1b, 2, 4, 0x0b, 1, 2, 6 };
+    static const int minimum_sizes[] = { 1, 0x29, 9, 4, 2, 4, 1, 4, 0x1b, 2, 4, 0x0b, 1, 2, 6 };
     static const int ncodes = sizeof(minimum_sizes) / sizeof(int);
     // NOTE: The sizes contained in hblock can vary, even within a single machine, as can the length of hblock itself!
 
@@ -1756,6 +1756,7 @@ bool PRS1DataChunk::ParseSettingsF0V6(const unsigned char* data, int size)
     int imax_ps   = 0;
     int min_pressure = 0;
     int max_pressure = 0;
+    bool ramp_type_set = false;
 
     // Parse the nested data structure which contains settings
     int pos = 0;
@@ -1902,16 +1903,24 @@ bool PRS1DataChunk::ParseSettingsF0V6(const unsigned char* data, int size)
                 CHECK_VALUE(len, 1);
                 CHECK_VALUES(data[pos], 0, 0x80);  // 0 == "Linear", 0x80 = "SmartRamp"
                 this->AddEvent(new PRS1ParsedSettingEvent(PRS1_SETTING_RAMP_TYPE, data[pos] != 0));
+                ramp_type_set = true;
                 break;
             case 0x2c:  // Ramp Time
                 CHECK_VALUE(len, 1);
                 if (data[pos] != 0) {  // 0 == ramp off, and ramp pressure setting doesn't appear
                     if (data[pos] < 5 || data[pos] > 45) UNEXPECTED_VALUE(data[pos], "5-45");
                 }
+                if (!ramp_type_set) {
+                    // If there's a ramp time that's neither linear nor SmartRamp, then it's Ramp+.
+                    this->AddEvent(new PRS1ParsedSettingEvent(PRS1_SETTING_RAMP_TYPE, 2));
+                    ramp_type_set = true;
+                }
                 this->AddEvent(new PRS1ParsedSettingEvent(PRS1_SETTING_RAMP_TIME, data[pos]));
                 break;
             case 0x2d:  // Ramp Pressure
                 CHECK_VALUE(len, 1);
+                // 0 = Off for Ramp+ (since time is always set)
+                // Turning it on during therapy creates a new session.
                 this->AddEvent(new PRS1PressureSettingEvent(PRS1_SETTING_RAMP_PRESSURE, data[pos]));
                 break;
             case 0x2e:  // Flex mode
@@ -1984,6 +1993,7 @@ bool PRS1DataChunk::ParseSettingsF0V6(const unsigned char* data, int size)
             case 0x2f:  // Flex lock
                 CHECK_VALUE(len, 1);
                 CHECK_VALUES(data[pos], 0, 0x80);
+                // DS2 doesn't have a specific flex lock. See patient controls access below.
                 this->AddEvent(new PRS1ParsedSettingEvent(PRS1_SETTING_FLEX_LOCK, data[pos] != 0));
                 break;
             case 0x30:  // Flex level
@@ -2003,6 +2013,7 @@ bool PRS1DataChunk::ParseSettingsF0V6(const unsigned char* data, int size)
             case 0x36:  // Mask Resistance Lock
                 CHECK_VALUE(len, 1);
                 CHECK_VALUES(data[pos], 0, 0x80);
+                // DS2 doesn't have a mask resistance lock, as the resistance setting is only in the provider menu.
                 this->AddEvent(new PRS1ParsedSettingEvent(PRS1_SETTING_MASK_RESIST_LOCK, data[pos] != 0));
                 break;
             case 0x38:  // Mask Resistance
@@ -2015,6 +2026,7 @@ bool PRS1DataChunk::ParseSettingsF0V6(const unsigned char* data, int size)
             case 0x39:  // Tubing Type Lock
                 CHECK_VALUE(len, 1);
                 CHECK_VALUES(data[pos], 0, 0x80);
+                // DS2 doesn't have a tubing type lock, it is always available (unless a heated tube is auto-detected).
                 this->AddEvent(new PRS1ParsedSettingEvent(PRS1_SETTING_TUBING_LOCK, data[pos] != 0));
                 break;
             case 0x3b:  // Tubing Type
@@ -2061,10 +2073,27 @@ bool PRS1DataChunk::ParseSettingsF0V6(const unsigned char* data, int size)
                 }
                 this->AddEvent(new PRS1ScaledSettingEvent(PRS1_SETTING_HUMID_TARGET_TIME, data[pos], 0.1));
                 break;
-            case 0x46:  // Tubing Type (alternate, seen instead of 0x3b on 700X110 v1.2 firmware)
+            case 0x46:  // Tubing Type (alternate, seen instead of 0x3b on 700X110 v1.2 firmware and on DS2)
                 CHECK_VALUE(len, 1);
-                CHECK_VALUE(data[pos], 2);  // 15HT = 2 based on user report
-                this->ParseTubingTypeV3(data[pos]);  // Since 15HT matches 0x3b above, assume the rest do (but warn)
+                if (data[pos] > 3) UNEXPECTED_VALUE(data[pos], "0-3");  // 0 = 22mm, 1 = 15mm, 2 = 15HT, 3 = 12mm
+                // TODO: Confirm that 4 is 12HT and update ParseTubingTypeV3.
+                this->ParseTubingTypeV3(data[pos]);
+                break;
+            case 0x4a:  // Patient controls access, specific to DreamStation 2.
+                CHECK_VALUE(len, 1);
+                CHECK_VALUES(data[pos], 0, 0x80);
+                // Turning off patient controls access essentially locks only flex and ramp time.
+                // Humidification, heated tube temperature, and ramp level are still adjustable during therapy.
+                // (DS2 doesn't have a separate flex lock setting.)
+                if (data[pos] == 0) {
+                    this->AddEvent(new PRS1ParsedSettingEvent(PRS1_SETTING_FLEX_LOCK, true));
+                }
+                break;
+            case 0x4b:  // Patient data access, specific to DreamStation 2.
+                CHECK_VALUE(len, 1);
+                CHECK_VALUES(data[pos], 0, 0x80);
+                // Turning off patient data access hides both AHI and on-device reports.
+                this->AddEvent(new PRS1ParsedSettingEvent(PRS1_SETTING_SHOW_AHI, data[pos] != 0));
                 break;
             default:
                 UNEXPECTED_VALUE(code, "known setting");
