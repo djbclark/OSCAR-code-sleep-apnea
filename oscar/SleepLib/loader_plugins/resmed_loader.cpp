@@ -50,7 +50,7 @@ void ResmedLoader::LogUnexpectedMessage(const QString & message)
     m_importMutex.unlock();
 }
 
-static const QVector<int> AS11TestedModels {39420, 0};
+static const QVector<int> AS11TestedModels {39420, 39423, 0};
 
 ResmedLoader::ResmedLoader() {
 #ifndef UNITTEST_MODE
@@ -67,8 +67,10 @@ ResmedLoader::ResmedLoader() {
 #endif
     m_type = MT_CPAP;
 
+#ifdef DEBUG_EFFICIENCY
     timeInTimeDelta = timeInLoadBRP = timeInLoadPLD = timeInLoadEVE = 0;
     timeInLoadCSL = timeInLoadSAD = timeInEDFInfo = timeInEDFOpen = timeInAddWaveform = 0;
+#endif    
 
     saveCallback = SaveSession;
 }
@@ -775,15 +777,15 @@ int ResmedLoader::Open(const QString & dirpath)
         qDebug() << "Total CPU time in LoadCSL" << timeInLoadCSL;
         qDebug() << "Total CPU time in (BRP) AddWaveform" << timeInAddWaveform;
         qDebug() << "Total CPU time in TimeDelta function" << timeInTimeDelta;
+
+        channel_efficiency.clear();
+        channel_time.clear();
     }
 #endif
 
 //    sessfiles.clear();
 //    strsess.clear();
 //    strdate.clear();
-
-    channel_efficiency.clear();
-    channel_time.clear();
 
     qDebug() << "Total Events " << event_cnt;
     qDebug() << "Total new Sessions " << num_new_sessions;
@@ -1384,48 +1386,53 @@ bool ResmedLoader::ProcessSTRfiles(Machine *mach, QMap<QDate, STRFile> & STRmap,
                     }
                 }
 
-                if ((mod == 11) && ( ! AS_eleven)) {
+                int RMS9_mode = R.rms9_mode;
+                switch ( RMS9_mode ) {
+                case 11:    
                     mode = MODE_APAP; // For her is a special apap
-                } else if (mod == 9) {
+                    break;
+                case 9:    
                     mode = MODE_AVAPS;
-                } else if (mod == 8) {       // mod 8 == vpap adapt variable epap
+                    break;
+                case 8:    // mod 8 == vpap adapt variable epap
                     mode = MODE_ASV_VARIABLE_EPAP;
-                } else if (mod == 7) {       // mod 7 == vpap adapt
+                    break;
+                case 7:    // mod 7 == vpap adapt
                     mode = MODE_ASV;
-                } else if (mod == 6) { // mod 6 == vpap auto (Min EPAP, Max IPAP, PS)
+                    break;
+                case 6:    // mod 6 == vpap auto (Min EPAP, Max IPAP, PS)
                     mode = MODE_BILEVEL_AUTO_FIXED_PS;
-                } else if (mod >= 3) {  // mod 3 == vpap s fixed pressure (EPAP, IPAP, No PS)
-                                        // 4,5 are S/T types...
-                    if ( AS_eleven )
-                        mode = MODE_CPAP;
-                    else    
-                        mode = MODE_BILEVEL_FIXED;
-                } else if (mod == 2) {
-                    if ( AS_eleven )
-                        mode = MODE_APAP; 
-                    else
-                        mode = MODE_BILEVEL_FIXED;
-                } else if (mod == 1) {      // same for AS11 as for AS10
+                    break;
+                case 5: // 4,5 are S/T types...
+                case 4:
+                case 3:    // mod 3 == vpap s fixed pressure (EPAP, IPAP, No PS)
+                    mode = MODE_BILEVEL_FIXED;
+                    break;
+                case 2:    
+                    mode = MODE_BILEVEL_FIXED;
+                    break;
+                case 1:    
                     mode = MODE_APAP; // mod 1 == apap
-                    // not sure what mode 2 is ?? split ?
-                } else  if (mod == 0) {
+                    break;
+                case 0:    
                     mode = MODE_CPAP; // mod 0 == cpap
-                }
+                    break;
+                default:
+                    mode = MODE_UNKNOWN;
+                }    
                 R.mode = mode;
 
                 // Settings.CPAP.Starting Pressure
-                if ((mod == 0) && (sig = str.lookupLabel("S.C.StartPress"))) {
+                if ((R.rms9_mode == 0) && (sig = str.lookupLabel("S.C.StartPress"))) {
                     R.ramp_pressure = EventDataType(sig->dataArray[rec]) * sig->gain + sig->offset;
                 }
                 // Settings.Adaptive Starting Pressure? 
-                if ( (mod == 1) && ((sig = str.lookupLabel("S.AS.StartPress")) || (sig = str.lookupLabel("S.A.StartPress"))) ) {
+                if ( (R.rms9_mode == 1) && ((sig = str.lookupLabel("S.AS.StartPress")) || (sig = str.lookupLabel("S.A.StartPress"))) ) {
                     R.ramp_pressure = EventDataType(sig->dataArray[rec]) * sig->gain + sig->offset;
                 }
                 // mode 11 = APAP for her?
-                if ( ((mod == 11) && ( ! AS_eleven)) || ((mod == 2) && AS_eleven) ) {
-                    if ( nullptr != (sig = str.lookupLabel("S.AFH.StartPress"))) {
+                if ( (R.rms9_mode == 11) && (sig = str.lookupLabel("S.AFH.StartPress"))) {
                         R.ramp_pressure = EventDataType(sig->dataArray[rec]) * sig->gain + sig->offset;
-                    }
                 }
                 if ((R.mode == MODE_BILEVEL_FIXED) && (sig = str.lookupLabel("S.BL.StartPress"))) {
                     // Bilevel Starting Pressure
@@ -1600,10 +1607,16 @@ bool ResmedLoader::ProcessSTRfiles(Machine *mach, QMap<QDate, STRFile> & STRmap,
                     R.min_ipap = R.min_epap + R.min_ps;
                 }
             }
-            if ((sig = str.lookupSignal(CPAP_PressureMax))) {
+            if ( (R.rms9_mode == 11) && (sig = str.lookupLabel("S.AFH.MaxPress")) ) {
                 R.max_pressure = EventDataType(sig->dataArray[rec]) * sig->gain + sig->offset;
             }
-            if ((sig = str.lookupSignal(CPAP_PressureMin))) {
+            else if ((sig = str.lookupSignal(CPAP_PressureMax))) {
+                R.max_pressure = EventDataType(sig->dataArray[rec]) * sig->gain + sig->offset;
+            }
+            if ( (R.rms9_mode == 11) && (sig = str.lookupLabel("S.AFH.MinPress")) ) {
+                R.min_pressure = EventDataType(sig->dataArray[rec]) * sig->gain + sig->offset;
+            }
+            else if ((sig = str.lookupSignal(CPAP_PressureMin))) {
                 R.min_pressure = EventDataType(sig->dataArray[rec]) * sig->gain + sig->offset;
             }
             if ((sig = str.lookupSignal(RMS9_SetPressure))) {
@@ -1815,6 +1828,9 @@ bool ResmedLoader::ProcessSTRfiles(Machine *mach, QMap<QDate, STRFile> & STRmap,
             }
             if ((sig = str.lookupLabel("S.Tube"))) {
                 R.s_Tube = EventDataType(sig->dataArray[rec]) * sig->gain + sig->offset;
+            }
+            if ( R.min_pressure == 0 ) {
+                qDebug() << "Min Pressure is zero on" << date.toString();
             }
 #ifdef STR_DEBUG
             qDebug() << "Finished" << date.toString();
@@ -2284,6 +2300,8 @@ void StoreSettings(Session * sess, STRRecord & R)
     if (R.mode >= 0) {
         sess->settings[CPAP_Mode] = R.mode;
         sess->settings[RMS9_Mode] = R.rms9_mode;
+        if ( R.min_pressure == 0 )
+            qDebug() << "Min Pressure is zero, R.mode is" << R.mode;
         if (R.mode == MODE_CPAP) {
             if (R.set_pressure >= 0) sess->settings[CPAP_Pressure] = R.set_pressure;
         } else if (R.mode == MODE_APAP) {
@@ -2310,7 +2328,7 @@ void StoreSettings(Session * sess, STRRecord & R)
             if (R.min_ps >= 0) sess->settings[CPAP_PSMin] = R.min_ps;
             if (R.max_ps >= 0) sess->settings[CPAP_PSMax] = R.max_ps;
         } else {
-//          qDebug() << "Setting session pressures for random mode";
+            qDebug() << "Setting session pressures for R.mode" << R.mode;
             if (R.set_pressure > 0) sess->settings[CPAP_Pressure] = R.set_pressure;
             if (R.min_pressure > 0) sess->settings[CPAP_PressureMin] = R.min_pressure;
             if (R.max_pressure > 0) sess->settings[CPAP_PressureMax] = R.max_pressure;
@@ -2444,7 +2462,7 @@ void ResDayTask::run()
                 save(loader, sess);                     // This is aliased to SaveSession - unless testing
             }
         }
-        qDebug() << "Finished summary processing for" << resday->date;
+//        qDebug() << "Finished summary processing for" << resday->date;
         return;
     }
 
@@ -3213,6 +3231,7 @@ bool ResmedLoader::LoadPLD(Session *sess, const QString & path)
             a->AddWaveform(edf.startdate, es.dataArray, samples, duration);
         } else if (matchSignal(CPAP_TidalVolume, es.label)) {
             code = CPAP_TidalVolume;
+            es.physical_dimension = "mL";
             es.gain *= 1000.0;
             es.physical_maximum *= 1000.0;
             es.physical_minimum *= 1000.0;
@@ -3357,6 +3376,11 @@ void ResmedLoader::ToTimeDelta(Session *sess, ResMedEDFInfo &edf, EDFSignal &es,
         startpos = 5; // Shave the first 10 seconds of pressure data
         tt += rate * startpos;
     }
+// Likewise for the values that the machine computes for us, but 20 seconds
+    if ((code == CPAP_MinuteVent) || (code == CPAP_RespRate) || (code == CPAP_TidalVolume)) {
+        startpos = 10; // Shave the first 20 seconds of computed data
+        tt += rate * startpos;
+    }
 
     qint16 *sptr = es.dataArray;
     qint16 *eptr = sptr + samples;
@@ -3432,7 +3456,8 @@ void ResmedLoader::ToTimeDelta(Session *sess, ResMedEDFInfo &edf, EDFSignal &es,
             if (forceDebug && ((code == CPAP_Pressure) || (code == CPAP_IPAP) || (code == CPAP_EPAP)) )
                 qDebug() << "Last Event:" << tmp << QDateTime::fromMSecsSinceEpoch(tt).toString() << "Pos:" << (sptr-1) - es.dataArray;
         } else
-            qDebug() << "Failed to add last event" << tmp << QDateTime::fromMSecsSinceEpoch(tt).toString() << "Pos:" << (sptr-1) - es.dataArray;
+            qDebug() << "Failed to add last event - Code:" << QString::number(code, 16) << "Value:" << tmp << 
+                QDateTime::fromMSecsSinceEpoch(tt).toString() << "Pos:" << (sptr-1) - es.dataArray;
 
         sess->updateMin(code, min);
         sess->updateMax(code, max);
@@ -3492,8 +3517,9 @@ EventList * buildEventList( EventStoreType est, EventDataType t_min, EventDataTy
 
         el->AddEvent(tt, est);
     } else {
-        if ( tmp > 0 )
-            qDebug() << "Value:" << tmp << "Out of range: t_min:" << t_min << "t_max:" << t_max << "EL count:" << el->count();
+//        if ( tmp > 0 )
+            qDebug() << "Code:" << QString::number(code, 16) <<"Value:" << tmp << "Out of range:\n\t t_min:" <<
+                t_min << "t_max:" << t_max << "EL count:" << el->count();
         // Out of bounds value, start a new eventlist
         // But first drop a closing value that repeats the last one
         el->AddEvent(tt, el->raw(el->count() - 1));
