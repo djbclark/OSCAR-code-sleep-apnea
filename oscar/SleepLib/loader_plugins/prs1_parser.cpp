@@ -916,6 +916,7 @@ void PRS1DataChunk::ParseTubingTypeV3(unsigned char type)
     case 1: diam = 15; break;
     case 2: diam = 15; break;  // 15HT, though the reports only say "15" for DreamStation models
     case 3: diam = 12; break;  // seen on DreamStation Go models
+    case 4: diam = 12; break;  // HT12, seen on DreamStation 2 models
     default:
         UNEXPECTED_VALUE(type, "known tubing type");
         return;
@@ -1395,9 +1396,9 @@ static crc32_t CRC32(const unsigned char *data, size_t data_len, crc32_t crc)
 }
 
 
-// Strangely, the PRS1 CRC32 appears to consider every byte a 32-bit wchar_t.
-// Nothing like trying a bunch of encodings and CRC32 variants on PROP.TXT files
-// until you find a winner.
+// The PRS1 CRC32 considers every byte a 32-bit wchar_t, presumably due to
+// use of the STM32 CRC calculation unit, in which "CRC computation is done
+// on the whole 32-bit data word, and not byte per byte".
 
 static crc32_t CRC32wchar(const unsigned char *data, size_t data_len, crc32_t crc)
 {

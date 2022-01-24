@@ -311,7 +311,6 @@ SOURCES += \
     SleepLib/loader_plugins/somnopose_loader.cpp \
     SleepLib/loader_plugins/viatom_loader.cpp \
     SleepLib/loader_plugins/zeo_loader.cpp \
-    SleepLib/thirdparty/botan_all.cpp \
     zip.cpp \
     SleepLib/thirdparty/miniz.c \
     csv.cpp \
@@ -341,6 +340,19 @@ SOURCES += \
 !contains(DEFINES, helpless) {
     SOURCES += help.cpp
 }
+
+# The crypto libraries need to be optimized to avoid a 5x slowdown or worse.
+# Don't use this for everything, as it interferes with debugging.
+SOURCES_OPTIMIZE = \
+    SleepLib/thirdparty/botan_all.cpp \
+    SleepLib/crypto.cpp
+optimize.name = optimize
+optimize.input = SOURCES_OPTIMIZE
+optimize.dependency_type = TYPE_C
+optimize.variable_out = OBJECTS
+optimize.output = ${QMAKE_VAR_OBJECTS_DIR}${QMAKE_FILE_IN_BASE}$${first(QMAKE_EXT_OBJ)}
+optimize.commands = $${QMAKE_CXX} -c $(CXXFLAGS) -O3 $(INCPATH) -o ${QMAKE_FILE_OUT} ${QMAKE_FILE_IN}
+QMAKE_EXTRA_COMPILERS += optimize
 
 HEADERS  += \
     checkupdates.h \
@@ -402,6 +414,7 @@ HEADERS  += \
     SleepLib/thirdparty/botan_windows.h \
     SleepLib/thirdparty/botan_linux.h \
     SleepLib/thirdparty/botan_macos.h \
+    SleepLib/crypto.h \
     zip.h \
     SleepLib/thirdparty/miniz.h \
     csv.h \
@@ -583,6 +596,7 @@ test {
         tests/versiontests.cpp \
         tests/viatomtests.cpp \
         tests/deviceconnectiontests.cpp \
+        tests/cryptotests.cpp \
         tests/dreemtests.cpp \
         tests/zeotests.cpp
 
@@ -595,6 +609,7 @@ test {
         tests/versiontests.h \
         tests/viatomtests.h \
         tests/deviceconnectiontests.h \
+        tests/cryptotests.h \
         tests/dreemtests.h \
         tests/zeotests.h
 }
