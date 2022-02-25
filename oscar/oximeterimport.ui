@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1370</width>
-    <height>748</height>
+    <height>801</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -77,6 +77,15 @@
        <property name="palette">
         <palette>
          <active>
+          <colorrole role="WindowText">
+           <brush brushstyle="SolidPattern">
+            <color alpha="255">
+             <red>0</red>
+             <green>0</green>
+             <blue>0</blue>
+            </color>
+           </brush>
+          </colorrole>
           <colorrole role="Button">
            <brush brushstyle="LinearGradientPattern">
             <gradient startx="0.000000000000000" starty="0.000000000000000" endx="1.000000000000000" endy="0.000000000000000" type="LinearGradient" spread="PadSpread" coordinatemode="ObjectBoundingMode">
@@ -95,6 +104,69 @@
               </color>
              </gradientstop>
             </gradient>
+           </brush>
+          </colorrole>
+          <colorrole role="Light">
+           <brush brushstyle="SolidPattern">
+            <color alpha="255">
+             <red>153</red>
+             <green>174</green>
+             <blue>255</blue>
+            </color>
+           </brush>
+          </colorrole>
+          <colorrole role="Midlight">
+           <brush brushstyle="SolidPattern">
+            <color alpha="255">
+             <red>103</red>
+             <green>132</green>
+             <blue>243</blue>
+            </color>
+           </brush>
+          </colorrole>
+          <colorrole role="Dark">
+           <brush brushstyle="SolidPattern">
+            <color alpha="255">
+             <red>27</red>
+             <green>45</green>
+             <blue>116</blue>
+            </color>
+           </brush>
+          </colorrole>
+          <colorrole role="Mid">
+           <brush brushstyle="SolidPattern">
+            <color alpha="255">
+             <red>36</red>
+             <green>60</green>
+             <blue>155</blue>
+            </color>
+           </brush>
+          </colorrole>
+          <colorrole role="Text">
+           <brush brushstyle="SolidPattern">
+            <color alpha="255">
+             <red>0</red>
+             <green>0</green>
+             <blue>0</blue>
+            </color>
+           </brush>
+          </colorrole>
+          <colorrole role="BrightText">
+           <brush brushstyle="SolidPattern">
+            <color alpha="255">
+             <red>255</red>
+             <green>255</green>
+             <blue>255</blue>
+            </color>
+           </brush>
+          </colorrole>
+          <colorrole role="ButtonText">
+           <brush brushstyle="SolidPattern">
+            <color alpha="255">
+             <red>0</red>
+             <green>0</green>
+             <blue>0</blue>
+            </color>
            </brush>
           </colorrole>
           <colorrole role="Base">
@@ -135,10 +207,64 @@
               </color>
              </gradientstop>
             </gradient>
+           </brush>
+          </colorrole>
+          <colorrole role="Shadow">
+           <brush brushstyle="SolidPattern">
+            <color alpha="255">
+             <red>0</red>
+             <green>0</green>
+             <blue>0</blue>
+            </color>
+           </brush>
+          </colorrole>
+          <colorrole role="AlternateBase">
+           <brush brushstyle="SolidPattern">
+            <color alpha="255">
+             <red>154</red>
+             <green>172</green>
+             <blue>243</blue>
+            </color>
+           </brush>
+          </colorrole>
+          <colorrole role="ToolTipBase">
+           <brush brushstyle="SolidPattern">
+            <color alpha="255">
+             <red>255</red>
+             <green>255</green>
+             <blue>220</blue>
+            </color>
+           </brush>
+          </colorrole>
+          <colorrole role="ToolTipText">
+           <brush brushstyle="SolidPattern">
+            <color alpha="255">
+             <red>0</red>
+             <green>0</green>
+             <blue>0</blue>
+            </color>
+           </brush>
+          </colorrole>
+          <colorrole role="PlaceholderText">
+           <brush brushstyle="NoBrush">
+            <color alpha="128">
+             <red>0</red>
+             <green>0</green>
+             <blue>0</blue>
+            </color>
            </brush>
           </colorrole>
          </active>
          <inactive>
+          <colorrole role="WindowText">
+           <brush brushstyle="SolidPattern">
+            <color alpha="255">
+             <red>0</red>
+             <green>0</green>
+             <blue>0</blue>
+            </color>
+           </brush>
+          </colorrole>
           <colorrole role="Button">
            <brush brushstyle="LinearGradientPattern">
             <gradient startx="0.000000000000000" starty="0.000000000000000" endx="1.000000000000000" endy="0.000000000000000" type="LinearGradient" spread="PadSpread" coordinatemode="ObjectBoundingMode">
@@ -157,6 +283,69 @@
               </color>
              </gradientstop>
             </gradient>
+           </brush>
+          </colorrole>
+          <colorrole role="Light">
+           <brush brushstyle="SolidPattern">
+            <color alpha="255">
+             <red>153</red>
+             <green>174</green>
+             <blue>255</blue>
+            </color>
+           </brush>
+          </colorrole>
+          <colorrole role="Midlight">
+           <brush brushstyle="SolidPattern">
+            <color alpha="255">
+             <red>103</red>
+             <green>132</green>
+             <blue>243</blue>
+            </color>
+           </brush>
+          </colorrole>
+          <colorrole role="Dark">
+           <brush brushstyle="SolidPattern">
+            <color alpha="255">
+             <red>27</red>
+             <green>45</green>
+             <blue>116</blue>
+            </color>
+           </brush>
+          </colorrole>
+          <colorrole role="Mid">
+           <brush brushstyle="SolidPattern">
+            <color alpha="255">
+             <red>36</red>
+             <green>60</green>
+             <blue>155</blue>
+            </color>
+           </brush>
+          </colorrole>
+          <colorrole role="Text">
+           <brush brushstyle="SolidPattern">
+            <color alpha="255">
+             <red>0</red>
+             <green>0</green>
+             <blue>0</blue>
+            </color>
+           </brush>
+          </colorrole>
+          <colorrole role="BrightText">
+           <brush brushstyle="SolidPattern">
+            <color alpha="255">
+             <red>255</red>
+             <green>255</green>
+             <blue>255</blue>
+            </color>
+           </brush>
+          </colorrole>
+          <colorrole role="ButtonText">
+           <brush brushstyle="SolidPattern">
+            <color alpha="255">
+             <red>0</red>
+             <green>0</green>
+             <blue>0</blue>
+            </color>
            </brush>
           </colorrole>
           <colorrole role="Base">
@@ -197,10 +386,64 @@
               </color>
              </gradientstop>
             </gradient>
+           </brush>
+          </colorrole>
+          <colorrole role="Shadow">
+           <brush brushstyle="SolidPattern">
+            <color alpha="255">
+             <red>0</red>
+             <green>0</green>
+             <blue>0</blue>
+            </color>
+           </brush>
+          </colorrole>
+          <colorrole role="AlternateBase">
+           <brush brushstyle="SolidPattern">
+            <color alpha="255">
+             <red>154</red>
+             <green>172</green>
+             <blue>243</blue>
+            </color>
+           </brush>
+          </colorrole>
+          <colorrole role="ToolTipBase">
+           <brush brushstyle="SolidPattern">
+            <color alpha="255">
+             <red>255</red>
+             <green>255</green>
+             <blue>220</blue>
+            </color>
+           </brush>
+          </colorrole>
+          <colorrole role="ToolTipText">
+           <brush brushstyle="SolidPattern">
+            <color alpha="255">
+             <red>0</red>
+             <green>0</green>
+             <blue>0</blue>
+            </color>
+           </brush>
+          </colorrole>
+          <colorrole role="PlaceholderText">
+           <brush brushstyle="NoBrush">
+            <color alpha="128">
+             <red>0</red>
+             <green>0</green>
+             <blue>0</blue>
+            </color>
            </brush>
           </colorrole>
          </inactive>
          <disabled>
+          <colorrole role="WindowText">
+           <brush brushstyle="SolidPattern">
+            <color alpha="255">
+             <red>27</red>
+             <green>45</green>
+             <blue>116</blue>
+            </color>
+           </brush>
+          </colorrole>
           <colorrole role="Button">
            <brush brushstyle="LinearGradientPattern">
             <gradient startx="0.000000000000000" starty="0.000000000000000" endx="1.000000000000000" endy="0.000000000000000" type="LinearGradient" spread="PadSpread" coordinatemode="ObjectBoundingMode">
@@ -219,6 +462,69 @@
               </color>
              </gradientstop>
             </gradient>
+           </brush>
+          </colorrole>
+          <colorrole role="Light">
+           <brush brushstyle="SolidPattern">
+            <color alpha="255">
+             <red>153</red>
+             <green>174</green>
+             <blue>255</blue>
+            </color>
+           </brush>
+          </colorrole>
+          <colorrole role="Midlight">
+           <brush brushstyle="SolidPattern">
+            <color alpha="255">
+             <red>103</red>
+             <green>132</green>
+             <blue>243</blue>
+            </color>
+           </brush>
+          </colorrole>
+          <colorrole role="Dark">
+           <brush brushstyle="SolidPattern">
+            <color alpha="255">
+             <red>27</red>
+             <green>45</green>
+             <blue>116</blue>
+            </color>
+           </brush>
+          </colorrole>
+          <colorrole role="Mid">
+           <brush brushstyle="SolidPattern">
+            <color alpha="255">
+             <red>36</red>
+             <green>60</green>
+             <blue>155</blue>
+            </color>
+           </brush>
+          </colorrole>
+          <colorrole role="Text">
+           <brush brushstyle="SolidPattern">
+            <color alpha="255">
+             <red>27</red>
+             <green>45</green>
+             <blue>116</blue>
+            </color>
+           </brush>
+          </colorrole>
+          <colorrole role="BrightText">
+           <brush brushstyle="SolidPattern">
+            <color alpha="255">
+             <red>255</red>
+             <green>255</green>
+             <blue>255</blue>
+            </color>
+           </brush>
+          </colorrole>
+          <colorrole role="ButtonText">
+           <brush brushstyle="SolidPattern">
+            <color alpha="255">
+             <red>27</red>
+             <green>45</green>
+             <blue>116</blue>
+            </color>
            </brush>
           </colorrole>
           <colorrole role="Base">
@@ -259,6 +565,51 @@
               </color>
              </gradientstop>
             </gradient>
+           </brush>
+          </colorrole>
+          <colorrole role="Shadow">
+           <brush brushstyle="SolidPattern">
+            <color alpha="255">
+             <red>0</red>
+             <green>0</green>
+             <blue>0</blue>
+            </color>
+           </brush>
+          </colorrole>
+          <colorrole role="AlternateBase">
+           <brush brushstyle="SolidPattern">
+            <color alpha="255">
+             <red>54</red>
+             <green>90</green>
+             <blue>232</blue>
+            </color>
+           </brush>
+          </colorrole>
+          <colorrole role="ToolTipBase">
+           <brush brushstyle="SolidPattern">
+            <color alpha="255">
+             <red>255</red>
+             <green>255</green>
+             <blue>220</blue>
+            </color>
+           </brush>
+          </colorrole>
+          <colorrole role="ToolTipText">
+           <brush brushstyle="SolidPattern">
+            <color alpha="255">
+             <red>0</red>
+             <green>0</green>
+             <blue>0</blue>
+            </color>
+           </brush>
+          </colorrole>
+          <colorrole role="PlaceholderText">
+           <brush brushstyle="NoBrush">
+            <color alpha="128">
+             <red>0</red>
+             <green>0</green>
+             <blue>0</blue>
+            </color>
            </brush>
           </colorrole>
          </disabled>
@@ -345,7 +696,7 @@ border-radius: 0px;</string>
      <item>
       <widget class="QStackedWidget" name="stackedWidget">
        <property name="currentIndex">
-        <number>0</number>
+        <number>1</number>
        </property>
        <widget class="QWidget" name="welcomePage">
         <layout class="QVBoxLayout" name="verticalLayout">
@@ -406,7 +757,7 @@ border-radius: 0px;</string>
                <string notr="true">&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
 &lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;meta charset=&quot;utf-8&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
 p, li { white-space: pre-wrap; }
-&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'Segoe UI'; font-size:9pt; font-weight:400; font-style:normal;&quot;&gt;
+&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'Segoe UI'; font-size:11.25pt; font-weight:400; font-style:normal;&quot;&gt;
 &lt;p style=&quot;-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; font-family:'.Lucida Grande UI'; font-size:13pt;&quot;&gt;&lt;br /&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
               </property>
               <property name="placeholderText">
@@ -496,7 +847,7 @@ background: qlineargradient( x1:0 y1:0, x2:1 y2:0, stop:0 white, stop:1 #cccccc)
             </font>
            </property>
            <property name="text">
-            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600; font-style:italic;&quot;&gt;Please note: &lt;/span&gt;&lt;span style=&quot; font-style:italic;&quot;&gt;First select your correct oximeter type from the pull-down menu below.&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Please note:&lt;/span&gt; First select your CMS50, Pulox or ChoiceMMed oximeter type from the pull-down menu below.&lt;/p&gt;&lt;p&gt;Other Brands can be imported from the Menu Bar: Data/Import.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
            </property>
            <property name="alignment">
             <set>Qt::AlignHCenter|Qt::AlignTop</set>
@@ -583,33 +934,34 @@ background: qlineargradient( x1:0 y1:0, x2:1 y2:0, stop:0 white, stop:1 #cccccc)
            <item>
             <widget class="QLabel" name="label_13">
              <property name="text">
-              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:12pt; font-weight:700;&quot;&gt;FIRST Select your Oximeter from these groups:&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;FIRST Select your Oximeter from these groups:&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
              </property>
             </widget>
            </item>
            <item>
             <widget class="QComboBox" name="oximeterType">
-             <property name="font">
-              <font>
-               <pointsize>12</pointsize>
-              </font>
+             <property name="toolTip">
+              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;All other types:&lt;/span&gt; Use Data/Import from the Menu bar.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+             </property>
+             <property name="currentText">
+              <string notr="true">CMS50 D+/E/F, Pulox PO-200/300</string>
              </property>
              <property name="sizeAdjustPolicy">
               <enum>QComboBox::AdjustToContents</enum>
              </property>
              <item>
               <property name="text">
-               <string>CMS50Fv3.7+/H/I, CMS50D+v4.6, Pulox PO-400/500</string>
+               <string notr="true">CMS50 D+/E/F, Pulox PO-200/300</string>
               </property>
              </item>
              <item>
               <property name="text">
-               <string>CMS50D+/E/F, Pulox PO-200/300</string>
+               <string notr="true">CMS50 Fv3.7+/H/I, CMS50 D+v4.6, Pulox PO-400/500</string>
               </property>
              </item>
              <item>
               <property name="text">
-               <string>ChoiceMMed MD300W1</string>
+               <string notr="true">ChoiceMMed MD300W1</string>
               </property>
              </item>
             </widget>
@@ -639,13 +991,12 @@ background: qlineargradient( x1:0 y1:0, x2:1 y2:0, stop:0 white, stop:1 #cccccc)
            </property>
            <property name="font">
             <font>
-             <pointsize>11</pointsize>
              <italic>true</italic>
              <bold>true</bold>
             </font>
            </property>
            <property name="text">
-            <string>CMS50E/F users, when importing directly, please don't select upload on your device until OSCAR prompts you to.</string>
+            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;CMS50 E/F users, when importing directly, please wait for upload to your device until OSCAR prompts you to.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
            </property>
            <property name="alignment">
             <set>Qt::AlignCenter</set>
@@ -682,7 +1033,7 @@ background: qlineargradient( x1:0 y1:0, x2:1 y2:0, stop:0 white, stop:1 #cccccc)
             <item>
              <widget class="QCheckBox" name="cms50SyncTime">
               <property name="toolTip">
-               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;If enabled, OSCAR will automatically reset your CMS50's internal clock using your computers current time.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+               <string>If enabled, OSCAR will automatically reset your CMS50's internal clock using your computers current time.</string>
               </property>
               <property name="text">
                <string>Set device date/time</string>
@@ -692,7 +1043,7 @@ background: qlineargradient( x1:0 y1:0, x2:1 y2:0, stop:0 white, stop:1 #cccccc)
             <item>
              <widget class="QCheckBox" name="cms50CheckName">
               <property name="toolTip">
-               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Check to enable updating the device identifier next import, which is useful for those who have multiple oximeters lying around.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+               <string>Check to enable updating the device identifier next import, which is useful for those who have multiple oximeters lying around.</string>
               </property>
               <property name="text">
                <string>Set device identifier</string>
@@ -714,7 +1065,7 @@ background: qlineargradient( x1:0 y1:0, x2:1 y2:0, stop:0 white, stop:1 #cccccc)
                </size>
               </property>
               <property name="toolTip">
-               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Here you can enter a 7 character name for this oximeter.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+               <string>Here you can enter a 7 character name for this oximeter.</string>
               </property>
               <property name="inputMask">
                <string notr="true">nnnnnnn</string>
@@ -755,7 +1106,7 @@ background: qlineargradient( x1:0 y1:0, x2:1 y2:0, stop:0 white, stop:1 #cccccc)
             <item>
              <widget class="QCheckBox" name="cms50EraseAfterwards">
               <property name="toolTip">
-               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;This option will erase the imported session from your oximeter after import has completed. &lt;/p&gt;&lt;p&gt;Use with caution,  because if something goes wrong before OSCAR saves your session, you can't get it back.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+               <string>This option will erase the imported session from your oximeter after import has completed. Use with caution,  because if something goes wrong before OSCAR saves your session, you can't get it back.</string>
               </property>
               <property name="text">
                <string>Erase session after successful upload</string>
@@ -784,7 +1135,7 @@ background: qlineargradient( x1:0 y1:0, x2:1 y2:0, stop:0 white, stop:1 #cccccc)
          <item>
           <widget class="QPushButton" name="directImportButton">
            <property name="toolTip">
-            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;This option allows you to import (via cable) from your oximeters internal recordings.&lt;/p&gt;&lt;p&gt;After selecting on this option, old Contec oximeters will require you to use the device's menu to initiate the upload.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            <string>This option allows you to import (via cable) from your oximeters internal recordings. After selecting on this option, old Contec oximeters will require you to use the device's menu to initiate the upload.</string>
            </property>
            <property name="styleSheet">
             <string notr="true"/>
@@ -826,7 +1177,7 @@ background: qlineargradient( x1:0 y1:0, x2:1 y2:0, stop:0 white, stop:1 #cccccc)
          <item>
           <widget class="QPushButton" name="liveImportButton">
            <property name="toolTip">
-            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;If you don't mind a being attached to a running computer overnight, this option provide a useful plethysomogram graph, which gives an indication of heart rhythm, on top of the normal oximetry readings.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;If you don't mind being attached to a running computer overnight, this option provides a useful &lt;span style=&quot; font-style:italic;&quot;&gt;plethysonogram&lt;/span&gt; graph, which gives an indication of heart rhythm on top of the normal oximetry readings.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
            </property>
            <property name="styleSheet">
             <string notr="true"/>
@@ -865,7 +1216,7 @@ background: qlineargradient( x1:0 y1:0, x2:1 y2:0, stop:0 white, stop:1 #cccccc)
          <item>
           <widget class="QPushButton" name="fileImportButton">
            <property name="toolTip">
-            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;This option allows you to import from data files created by software that came with your Pulse Oximeter, such as SpO2Review.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            <string>This option allows you to import from data files created by software that came with your Pulse Oximeter, such as SpO2Review.</string>
            </property>
            <property name="styleSheet">
             <string notr="true"/>
@@ -915,7 +1266,7 @@ background: qlineargradient( x1:0 y1:0, x2:1 y2:0, stop:0 white, stop:1 #cccccc)
             </font>
            </property>
            <property name="text">
-            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600; font-style:italic;&quot;&gt;Reminder for CPAP users: &lt;/span&gt;&lt;span style=&quot; color:#fb0000;&quot;&gt;Did you remember to import your CPAP sessions first?&lt;br/&gt;&lt;/span&gt;If you forget, you won't have a valid time to sync this oximetry session to.&lt;br/&gt;To a ensure good sync between devices, always try to start both at the same time.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Reminder for CPAP users&lt;/span&gt;: &lt;span style=&quot; color:#ff0000;&quot;&gt;FIRST import your CPAP sessions!&lt;/span&gt;&lt;/p&gt;&lt;p&gt;If you forget, you won't have a valid time to sync this oximetry session to.&lt;/p&gt;&lt;p&gt;To a ensure good sync between devices, always try to start both at the same time.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
            </property>
            <property name="alignment">
             <set>Qt::AlignHCenter|Qt::AlignTop</set>
@@ -1133,7 +1484,7 @@ background: qlineargradient( x1:0 y1:0, x2:1 y2:0, stop:0 white, stop:1 #cccccc)
                  </font>
                 </property>
                 <property name="text">
-                 <string notr="true">&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;SpO&lt;span style=&quot; vertical-align:sub;&quot;&gt;2&lt;/span&gt; %&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                 <string notr="true">SpO2 %</string>
                 </property>
                 <property name="alignment">
                  <set>Qt::AlignHCenter|Qt::AlignTop</set>
@@ -1306,7 +1657,7 @@ background: qlineargradient( x1:0 y1:0, x2:1 y2:0, stop:0 white, stop:1 #cccccc)
             </font>
            </property>
            <property name="text">
-            <string>Multiple Sessions Detected</string>
+            <string>Multiple sessions detected</string>
            </property>
            <property name="alignment">
             <set>Qt::AlignCenter</set>
@@ -1372,7 +1723,7 @@ background: qlineargradient( x1:0 y1:0, x2:1 y2:0, stop:0 white, stop:1 #cccccc)
             </font>
            </property>
            <property name="text">
-            <string>Import Completed. When did the recording start?</string>
+            <string>Import completed. When did the recording start?</string>
            </property>
            <property name="alignment">
             <set>Qt::AlignCenter</set>
@@ -1470,7 +1821,7 @@ background: qlineargradient( x1:0 y1:0, x2:1 y2:0, stop:0 white, stop:1 #cccccc)
                  </sizepolicy>
                 </property>
                 <property name="text">
-                 <string>I started this oximeter recording at (or near) the same time as a session on my CPAP machine.</string>
+                 <string>I started this oximeter recording at (or near) the same time as a session on my CPAP device.</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
@@ -1499,7 +1850,7 @@ background: qlineargradient( x1:0 y1:0, x2:1 y2:0, stop:0 white, stop:1 #cccccc)
                  </sizepolicy>
                 </property>
                 <property name="text">
-                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;OSCAR needs a starting time to know where to save this oximetry session to.&lt;/p&gt;&lt;p&gt;Choose one of the following options:&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                 <string>OSCAR needs a starting time to know where to save this oximetry session to. Choose one of the following options:</string>
                 </property>
                 <property name="alignment">
                  <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
@@ -1531,7 +1882,7 @@ background: qlineargradient( x1:0 y1:0, x2:1 y2:0, stop:0 white, stop:1 #cccccc)
                  </sizepolicy>
                 </property>
                 <property name="text">
-                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Note: Syncing to CPAP session starting time will always be more accurate.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                 <string>Note: Syncing to CPAP session starting time will always be more accurate.</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>

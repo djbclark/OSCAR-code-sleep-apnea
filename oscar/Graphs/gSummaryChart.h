@@ -41,7 +41,7 @@ class SummaryChart: public Layer
     //! \brief Returns true if no data was found for this day during SetDay
     virtual bool isEmpty() { return m_empty; }
 
-    //! \brief Adds a layer to the summaryChart (When in Bar mode, it becomes culminative, eg, the AHI chart)
+    //! \brief Adds a layer to the summaryChart (When in Bar mode, it becomes cumulative, eg, the AHI chart)
     void addSlice(ChannelID code, QColor color, SummaryType type, EventDataType tval = 0.00f) {
         m_codes.push_back(code);
         m_colors.push_back(color);
@@ -59,10 +59,10 @@ class SummaryChart: public Layer
     virtual bool isSelected() { return hl_day >= 0; }
 
 
-    //! \brief Sets the MachineType this SummaryChart is interested in
+    //! \brief Sets the device type this SummaryChart is interested in
     void setMachineType(MachineType type) { m_machinetype = type; }
 
-    //! \brief Returns the MachineType this SummaryChart is interested in
+    //! \brief Returns the device type this SummaryChart is interested in
     MachineType machineType() { return m_machinetype; }
 
     virtual Layer * Clone() {

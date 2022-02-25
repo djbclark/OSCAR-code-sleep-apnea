@@ -1441,9 +1441,9 @@ void gGraphView::paintGL()
         QString txt;
         if (m_showAuthorMessage) {
             if (emptyText() == STR_Empty_Brick) {
-                txt = QObject::tr("Your machine doesn't record data to graph in Daily View");
+                txt = QObject::tr("Your device doesn't record data to graph in Daily View");
             } else {
-                // not proud of telling them their machine is a Brick.. ;)
+                // not proud of telling them their device is a Brick.. ;)
                 txt = QObject::tr("There is no data to graph");
             }
         }

@@ -40,7 +40,7 @@
        <item>
         <widget class="QStackedWidget" name="stackedWidget">
          <property name="currentIndex">
-          <number>0</number>
+          <number>4</number>
          </property>
          <widget class="QWidget" name="welcomePage">
           <layout class="QVBoxLayout" name="verticalLayout_8">
@@ -383,7 +383,7 @@
                 <item>
                  <widget class="QLabel" name="label_8">
                   <property name="toolTip">
-                   <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Biological (birth) gender is sometimes needed to enhance the accuracy of a few calculations, feel free to leave this blank and skip any of them.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                   <string>Biological (birth) gender is sometimes needed to enhance the accuracy of a few calculations, feel free to leave this blank and skip any of them.</string>
                   </property>
                   <property name="text">
                    <string>Gender</string>
@@ -871,6 +871,7 @@
          <property name="font">
           <font>
            <pointsize>14</pointsize>
+           <weight>75</weight>
            <italic>false</italic>
            <bold>true</bold>
           </font>

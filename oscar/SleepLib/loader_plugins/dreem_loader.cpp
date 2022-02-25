@@ -38,7 +38,7 @@ DreemLoader::~DreemLoader()
 bool
 DreemLoader::Detect(const QString & path)
 {
-    // This is only used for CPAP machines, when detecting CPAP cards.
+    // This is only used for CPAP devices, when detecting CPAP cards.
     qDebug() << "DreemLoader::Detect(" << path << ")";
     return false;
 }

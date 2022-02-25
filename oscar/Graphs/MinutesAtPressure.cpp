@@ -33,7 +33,7 @@ On Mouse Over
 When there is no data available (the time selected is between sessions in a day) then "No Data" will be displayed.
 When no graphs are selected then "Plots Disabled" will be displayed - just like the Pressure Graph.
 
-The X-Axis start and end pressure now use the Machine limits. If plot data has a data outside the range is appopaitely updated.
+The X-Axis start and end pressure now use the device limits. If plot data has a data outside the range is appopaitely updated.
 
 Refactoring was done to
 
@@ -76,7 +76,7 @@ some messages from Apnea Board.
     Graphs any "Time at Pressure graph does not show the right pressure, i
     e.g. CPAP with constant pressure at 7.5 cmH2O , but the Time at Pressure graph only has a peak around 6.2 cmH2O
     " This is especially true when looking at data at constant pressure.
-    It was found with DV64 data, but is presumably true for other machine types as well as the graphs do not differentiate on machine types - to be confirmed All 2-high
+    It was found with DV64 data, but is presumably true for other device types as well as the graphs do not differentiate on device types - to be confirmed All 2-high
     All Issue 0000054 from SH 1.1.0 GitLab Issue List
  */
 
@@ -118,7 +118,7 @@ some messages from Apnea Board.
 // Compile time Constants
 // <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
-#define HIGHEST_POSSIBLE_PRESSURE           60      // should be the lowest possible pressure that a CPAP machine accepts - Plus spare.
+#define HIGHEST_POSSIBLE_PRESSURE           60      // should be the lowest possible pressure that a CPAP device accepts - Plus spare.
 #define INTERVALS_PER_CCMH2O                5       // must be a positive integer > 0. Five (5) produces good graphs. Other values will work.
                                                     // 10 also loogs good. larger number have smaller intervals and the starting pressure interval will be huge
                                                     // relation to the rest of the pressure intervals - making the graph unusable.
@@ -1329,7 +1329,7 @@ void MapPainter::drawMetaData(QPoint& last_mouse , QString& topBarLabel,Pressure
         graphSelected= false;
         // note until Session start times are synced with waveforms start time. there will be a difference in the total time displayed.
         // so don't display the total waveform time, because the user can see the  difference between sessions times and the total duration 
-        // calculated.  both the first and last times can be different for resmed machines. This can be confusing so don't display questionable data.
+        // calculated.  both the first and last times can be different for resmed devices. This can be confusing so don't display questionable data.
 
         topBarLabel = displayMetaData(ipap.chan.label(),minpressure, minpressure, maxpressure, timeString(ipap.totalDuration),"","");
         //topBarLabel = displayMetaData(ipap.chan.label(),minpressure, minpressure, maxpressure, "" ,"","");

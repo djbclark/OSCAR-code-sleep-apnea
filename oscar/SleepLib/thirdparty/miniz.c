@@ -1762,7 +1762,7 @@ static mz_bool tdefl_compress_normal(tdefl_compressor *d)
         if ((!flush) && (d->m_lookahead_size < TDEFL_MAX_MATCH_LEN))
             break;
 
-        /* Simple lazy/greedy parsing state machine. */
+        /* Simple lazy/greedy parsing state device. */
         len_to_move = 1;
         cur_match_dist = 0;
         cur_match_len = d->m_saved_match_len ? d->m_saved_match_len : (TDEFL_MIN_MATCH_LEN - 1);

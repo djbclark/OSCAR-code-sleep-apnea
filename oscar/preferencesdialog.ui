@@ -10,7 +10,7 @@
     <x>0</x>
     <y>0</y>
     <width>942</width>
-    <height>726</height>
+    <height>679</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -63,7 +63,7 @@
          </sizepolicy>
         </property>
         <property name="currentIndex">
-         <number>2</number>
+         <number>6</number>
         </property>
         <widget class="QWidget" name="importTab">
          <attribute name="title">
@@ -119,6 +119,9 @@
                  <horstretch>0</horstretch>
                  <verstretch>0</verstretch>
                 </sizepolicy>
+               </property>
+               <property name="toolTip">
+                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;b&gt;Please Note:&lt;/b&gt; OSCAR's advanced session splitting capabilities are not possible with ResMed devices due to a limitation in the way their settings and summary data is stored, and therefore they have been disabled for this profile.&lt;/p&gt;&lt;p&gt;On ResMed devices, days will split at noon, like in ResMed's commercial software.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                </property>
                <property name="text">
                 <string notr="true">[ResMed warning message]</string>
@@ -187,8 +190,7 @@
                      </size>
                     </property>
                     <property name="toolTip">
-                     <string>Multiple sessions closer together than this value will be kept on the same day.
-</string>
+                     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Multiple sessions closer together than this value will be kept on the same day.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                     </property>
                     <property name="minimum">
                      <number>0</number>
@@ -269,12 +271,7 @@
                   <item>
                    <widget class="QSlider" name="IgnoreSlider">
                     <property name="toolTip">
-                     <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
-&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
-p, li { white-space: pre-wrap; }
-&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'Cantarell'; font-size:11pt; font-weight:400; font-style:normal;&quot;&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Sessions shorter in duration than this will not be displayed&lt;span style=&quot; font-style:italic;&quot;&gt;.&lt;/span&gt;&lt;/p&gt;
-&lt;p style=&quot;-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; font-style:italic;&quot;&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                     <string>Sessions shorter in duration than this will not be displayed</string>
                     </property>
                     <property name="maximum">
                      <number>90</number>
@@ -359,7 +356,7 @@ p, li { white-space: pre-wrap; }
                   <item>
                    <widget class="QCheckBox" name="LockSummarySessionSplitting">
                     <property name="toolTip">
-                     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;This setting should be used with caution...&lt;/span&gt; Switching it off comes with consequences involving accuracy of summary only days, as certain calculations only work properly provided summary only sessions that came from individual day records are kept together. &lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;ResMed users:&lt;/span&gt; Just because it seems natural to you and I that the 12 noon session restart should be in the previous day, does not mean ResMed's data agrees with us. The STF.edf summary index format has serious weaknesses that make doing this not a good idea.&lt;/p&gt;&lt;p&gt;This option exists to pacify those who don't care and want to see this &amp;quot;fixed&amp;quot; no matter the costs, but know it comes with a cost. If you keep your SD card in every night, and import at least once a week, you won't see problems with this very often.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;b&gt;This setting should be used with caution:&lt;/b&gt; Switching it off comes with consequences involving accuracy of summary only days, as certain calculations only work properly provided summary only sessions that came from individual day records are kept together. &lt;/p&gt;&lt;p&gt;&lt;b&gt;ResMed users:&lt;/b&gt; Just because it seems natural to you and I that the 12 noon session restart should be in the previous day, does not mean ResMed's data agrees with us. The STF.edf summary index format has serious weaknesses that make doing this not a good idea. &lt;/p&gt;&lt;p&gt;This option exists to pacify those who don't care and want to see this fixed no matter the costs, but know it comes with a cost. If you keep your SD card in every night, and import at least once a week, you won't see problems with this very often.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                     </property>
                     <property name="text">
                      <string>Don't Split Summary Days (Warning: read the tooltip!)</string>
@@ -477,13 +474,7 @@ If you've got a new computer with a small solid state disk, this is a good optio
              <item row="2" column="0">
               <widget class="QCheckBox" name="createSDBackups">
                <property name="toolTip">
-                <string>This maintains a backup of SD-card data for ResMed machines, 
-
-ResMed S9 series machines delete high resolution data older than 7 days, 
-and graph data older than 30 days..
-
-OSCAR can keep a copy of this data if you ever need to reinstall. 
-(Highly recomended, unless your short on disk space or don't care about the graph data)</string>
+                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;This maintains a backup of SD-card data for ResMed devices, &lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;ResMed S9 series devices delete high resolution data older than 7 days, &lt;/p&gt;&lt;p&gt;and graph data older than 30 days..&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;OSCAR can keep a copy of this data if you ever need to reinstall. (Highly recomended, unless you're short on disk space or don't care about the graph data).&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                </property>
                <property name="text">
                 <string>Create SD Card Backups during Import (Turn this off at your own peril!)</string>
@@ -600,7 +591,7 @@ OSCAR can keep a copy of this data if you ever need to reinstall.
              <item row="1" column="0">
               <widget class="QCheckBox" name="cacheSessionData">
                <property name="toolTip">
-                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;This setting keeps waveform and event data in memory after use to speed up revisiting days.&lt;/p&gt;&lt;p&gt;This is not really a necessary option, as your operating system caches previously used files too.&lt;/p&gt;&lt;p&gt;Recommendation is to leave it switched off, unless your computer has a ton of memory.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                <string>This setting keeps waveform and event data in memory after use to speed up revisiting days. This is not really a necessary option, as your operating system caches previously used files too. Recommendation is to leave it switched off, unless your computer has a ton of memory.</string>
                </property>
                <property name="text">
                 <string>Keep Waveform/Event data in memory</string>
@@ -610,7 +601,7 @@ OSCAR can keep a copy of this data if you ever need to reinstall.
              <item row="0" column="0">
               <widget class="QCheckBox" name="preloadSummaries">
                <property name="toolTip">
-                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Makes starting OSCAR a bit slower, by pre-loading all the summary data in advance, which speeds up overview browsing and a few other calculations later on. &lt;/p&gt;&lt;p&gt;If you have a large amount of data, it might be worth keeping this switched off, but if you typically like to view &lt;span style=&quot; font-style:italic;&quot;&gt;everything&lt;/span&gt; in overview, all the summary data still has to be loaded anyway. &lt;/p&gt;&lt;p&gt;Note this setting doesn't affect waveform and event data, which is always demand loaded as needed.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                <string>Makes starting OSCAR a bit slower, by pre-loading all the summary data in advance, which speeds up overview browsing and a few other calculations later on. If you have a large amount of data, it might be worth keeping this switched off, but if you typically like to view everything in overview, all the summary data still has to be loaded anyway. Note this setting doesn't affect waveform and event data, which is always demand loaded as needed.</string>
                </property>
                <property name="text">
                 <string>Pre-Load all summary data at startup</string>
@@ -627,7 +618,7 @@ OSCAR can keep a copy of this data if you ever need to reinstall.
              <item row="0" column="1">
               <widget class="QCheckBox" name="automaticImport">
                <property name="toolTip">
-                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Cuts down on any unimportant confirmation dialogs during import.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                <string>Cuts down on any unimportant confirmation dialogs during import.</string>
                </property>
                <property name="text">
                 <string>Import without asking for confirmation</string>
@@ -637,17 +628,17 @@ OSCAR can keep a copy of this data if you ever need to reinstall.
              <item row="1" column="1">
               <widget class="QCheckBox" name="warnOnUntestedMachine">
                <property name="toolTip">
-                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Provide an alert when importing data from any machine model that has not yet been tested by OSCAR developers.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                <string>Provide an alert when importing data from any device model that has not yet been tested by OSCAR developers.</string>
                </property>
                <property name="text">
-                <string>Warn when importing data from an untested machine</string>
+                <string>Warn when importing data from an untested device</string>
                </property>
               </widget>
              </item>
              <item row="2" column="1">
               <widget class="QCheckBox" name="warnOnUnexpectedData">
                <property name="toolTip">
-                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Provide an alert when importing data that is somehow different from anything previously seen by OSCAR developers.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                <string>Provide an alert when importing data that is somehow different from anything previously seen by OSCAR developers.</string>
                </property>
                <property name="text">
                 <string>Warn when previously unseen data is encountered</string>
@@ -735,7 +726,7 @@ OSCAR can keep a copy of this data if you ever need to reinstall.
                   </sizepolicy>
                  </property>
                  <property name="text">
-                  <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Note: This is not intended for timezone corrections! Make sure your operating system clock and timezone is set correctly.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                  <string>Note: This is not intended for timezone corrections! Make sure your operating system clock and timezone is set correctly.</string>
                  </property>
                  <property name="wordWrap">
                   <bool>true</bool>
@@ -805,7 +796,7 @@ OSCAR can keep a copy of this data if you ever need to reinstall.
                </sizepolicy>
               </property>
               <property name="toolTip">
-               <string>This calculation requires Total Leaks data to be provided by the CPAP machine. (Eg, PRS1, but not ResMed, which has these already)
+               <string>This calculation requires Total Leaks data to be provided by the CPAP device. (Eg, PRS1, but not ResMed, which has these already)
 
 The Unintentional Leak calculations used here are linear, they don't model the mask vent curve.
 
@@ -970,7 +961,7 @@ If you use a few different masks, pick average values instead. It should still b
               </property>
               <property name="toolTip">
                <string>Enable/disable experimental event flagging enhancements. 
-It allows detecting borderline events, and some the machine missed.
+It allows detecting borderline events, and some the device missed.
 This option must be enabled before import, otherwise a purge is required.</string>
               </property>
               <property name="title">
@@ -1021,10 +1012,10 @@ This option must be enabled before import, otherwise a purge is required.</strin
                <item row="6" column="0" colspan="4">
                 <widget class="QCheckBox" name="resyncMachineDetectedEvents">
                  <property name="toolTip">
-                  <string>This experimental option attempts to use OSCAR's event flagging system to improve machine detected event positioning.</string>
+                  <string>This experimental option attempts to use OSCAR's event flagging system to improve Device detected event positioning.</string>
                  </property>
                  <property name="text">
-                  <string>Resync Machine Detected Events (Experimental)</string>
+                  <string>Resync Device Detected Events (Experimental)</string>
                  </property>
                 </widget>
                </item>
@@ -1078,11 +1069,7 @@ This option must be enabled before import, otherwise a purge is required.</strin
                   </font>
                  </property>
                  <property name="text">
-                  <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
-&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
-p, li { white-space: pre-wrap; }
-&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'Sans'; font-size:10pt; font-weight:400; font-style:italic;&quot;&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Custom flagging is an experimental method of detecting events missed by the machine. They are &lt;span style=&quot; text-decoration: underline;&quot;&gt;not&lt;/span&gt; included in AHI.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                  <string>Custom flagging is an experimental method of detecting events missed by the device. They are not included in AHI.</string>
                  </property>
                  <property name="alignment">
                   <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
@@ -1102,7 +1089,7 @@ p, li { white-space: pre-wrap; }
                  </property>
                  <property name="toolTip">
                   <string>Percentage of restriction in airflow from the median value. 
-A value of 20% works well for detecting apneas. </string>
+A value of 20% works well for detecting apneas.</string>
                  </property>
                  <property name="suffix">
                   <string notr="true">%</string>
@@ -1148,7 +1135,7 @@ A value of 20% works well for detecting apneas. </string>
                <item row="4" column="0" colspan="4">
                 <widget class="QCheckBox" name="userEventDuplicates">
                  <property name="text">
-                  <string>Allow duplicates near machine events.</string>
+                  <string>Allow duplicates near device events.</string>
                  </property>
                 </widget>
                </item>
@@ -1196,7 +1183,7 @@ A value of 20% works well for detecting apneas. </string>
                <item row="3" column="0">
                 <widget class="QCheckBox" name="showUnknownFlags">
                  <property name="toolTip">
-                  <string>Show flags for machine detected events that haven't been identified yet.</string>
+                  <string>Show flags for device detected events that haven't been identified yet.</string>
                  </property>
                  <property name="text">
                   <string>Enable Unknown Events Channels</string>
@@ -1404,7 +1391,7 @@ as this is the only value available on summary-only days.</string>
                <item row="4" column="0">
                 <widget class="QLabel" name="label_29">
                  <property name="text">
-                  <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Cumulative Indices&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                  <string>Culminative Indices</string>
                  </property>
                 </widget>
                </item>
@@ -1445,7 +1432,7 @@ as this is the only value available on summary-only days.</string>
                   </size>
                  </property>
                  <property name="toolTip">
-                  <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;True maximum is the maximum of the data set.&lt;/p&gt;&lt;p&gt;99th percentile filters out the rarest outliers.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                  <string>True maximum is the maximum of the data set. 99th percentile filters out the rarest outliers.</string>
                  </property>
                  <item>
                   <property name="text">
@@ -1460,7 +1447,7 @@ as this is the only value available on summary-only days.</string>
                 </widget>
                </item>
                <item row="4" column="1">
-                <widget class="QComboBox" name="culminativeIndices">
+                <widget class="QComboBox" name="CumulativeIndices">
                  <item>
                   <property name="text">
                    <string>Combined Count divided by Total Hours</string>
@@ -1492,7 +1479,7 @@ as this is the only value available on summary-only days.</string>
                   </sizepolicy>
                  </property>
                  <property name="text">
-                  <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Note: &lt;/span&gt;Due to summary design limitations, ResMed machines do not support changing these settings.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                  <string>Due to summary design limitations, ResMed devices do not support changing these settings.</string>
                  </property>
                  <property name="alignment">
                   <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
@@ -1578,43 +1565,6 @@ as this is the only value available on summary-only days.</string>
                 <string>Other oximetry options</string>
                </property>
                <layout class="QGridLayout" name="gridLayout_13">
-                <item row="0" column="1">
-                 <widget class="QSpinBox" name="oxiDesaturationThreshold">
-                  <property name="suffix">
-                   <string notr="true">%</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="2" column="1">
-                 <widget class="QSpinBox" name="flagPulseBelow">
-                  <property name="suffix">
-                   <string> bpm</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="3" column="1">
-                 <widget class="QSpinBox" name="oxiDiscardThreshold">
-                  <property name="toolTip">
-                   <string>Small chunks of oximetry data under this amount will be discarded.</string>
-                  </property>
-                  <property name="suffix">
-                   <string>s</string>
-                  </property>
-                  <property name="maximum">
-                   <number>300</number>
-                  </property>
-                 </widget>
-                </item>
-                <item row="3" column="0">
-                 <widget class="QLabel" name="label_33">
-                  <property name="text">
-                   <string>Discard segments under</string>
-                  </property>
-                  <property name="alignment">
-                   <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-                  </property>
-                 </widget>
-                </item>
                 <item row="1" column="1">
                  <widget class="QSpinBox" name="flagPulseAbove">
                   <property name="suffix">
@@ -1622,17 +1572,7 @@ as this is the only value available on summary-only days.</string>
                   </property>
                  </widget>
                 </item>
-                <item row="0" column="0">
-                 <widget class="QLabel" name="label_52">
-                  <property name="text">
-                   <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Flag SpO&lt;span style=&quot; vertical-align:sub;&quot;&gt;2&lt;/span&gt; Desaturations Below&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                  </property>
-                  <property name="alignment">
-                   <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-                  </property>
-                 </widget>
-                </item>
-                <item row="2" column="0">
+                <item row="3" column="0">
                  <widget class="QLabel" name="label_54">
                   <property name="text">
                    <string>Flag Pulse Rate Below</string>
@@ -1649,6 +1589,80 @@ as this is the only value available on summary-only days.</string>
                   </property>
                   <property name="alignment">
                    <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="1">
+                 <widget class="QSpinBox" name="flagPulseBelow">
+                  <property name="suffix">
+                   <string> bpm</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="1">
+                 <widget class="QSpinBox" name="oxiDesaturationThreshold">
+                  <property name="suffix">
+                   <string>%</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="0">
+                 <widget class="QLabel" name="label_33">
+                  <property name="text">
+                   <string>Discard segments under</string>
+                  </property>
+                  <property name="alignment">
+                   <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="0">
+                 <widget class="QLabel" name="label_52">
+                  <property name="text">
+                   <string>Flag SPO2 Desaturations Below</string>
+                  </property>
+                  <property name="alignment">
+                   <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="1">
+                 <widget class="QSpinBox" name="oxiDiscardThreshold">
+                  <property name="toolTip">
+                   <string>Small chunks of oximetry data under this amount will be discarded.</string>
+                  </property>
+                  <property name="suffix">
+                   <string>s</string>
+                  </property>
+                  <property name="maximum">
+                   <number>300</number>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="1">
+                 <widget class="QTextBrowser" name="textBrowser">
+                  <property name="sizePolicy">
+                   <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                    <horstretch>0</horstretch>
+                    <verstretch>0</verstretch>
+                   </sizepolicy>
+                  </property>
+                  <property name="minimumSize">
+                   <size>
+                    <width>300</width>
+                    <height>0</height>
+                   </size>
+                  </property>
+                  <property name="html">
+                   <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
+&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;meta charset=&quot;utf-8&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
+p, li { white-space: pre-wrap; }
+&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'Segoe UI'; font-size:9pt; font-weight:400; font-style:normal;&quot;&gt;
+&lt;p style=&quot; margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;CMS50 data imported from SpO2Review (from .spoR files) or the serial import method does not have the correct timestamp needed to sync.&lt;/p&gt;
+&lt;p style=&quot; margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Live view mode (using a serial cable) is one way to acheive an accurate sync on CMS50 oximeters, but does not counter for CPAP clock drift.&lt;/p&gt;
+&lt;p style=&quot; margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;If you start your Oximeters recording mode at exactly the same time you start your CPAP device, you can now also achieve sync.&lt;/p&gt;
+&lt;p style=&quot; margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;The serial import process takes the starting time from last nights first CPAP session.&lt;/p&gt;
+&lt;p style=&quot; margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Remember to import your CPAP data first!&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                   </property>
                  </widget>
                 </item>
@@ -1676,7 +1690,7 @@ as this is the only value available on summary-only days.</string>
                    </sizepolicy>
                   </property>
                   <property name="text">
-                   <string notr="true">&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;SpO&lt;span style=&quot; vertical-align:sub;&quot;&gt;2&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                   <string notr="true">SpO2</string>
                   </property>
                  </widget>
                 </item>
@@ -1741,7 +1755,7 @@ as this is the only value available on summary-only days.</string>
                    <string>Percentage drop in oxygen saturation</string>
                   </property>
                   <property name="suffix">
-                   <string notr="true">%</string>
+                   <string>%</string>
                   </property>
                   <property name="decimals">
                    <number>0</number>
@@ -1768,37 +1782,6 @@ as this is the only value available on summary-only days.</string>
               </spacer>
              </item>
             </layout>
-           </widget>
-          </item>
-          <item>
-           <widget class="QTextBrowser" name="textBrowser">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="minimumSize">
-             <size>
-              <width>300</width>
-              <height>0</height>
-             </size>
-            </property>
-            <property name="html">
-             <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
-&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;meta charset=&quot;utf-8&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
-p, li { white-space: pre-wrap; }
-&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'Segoe UI'; font-size:9pt; font-weight:400; font-style:normal;&quot;&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-family:'Sans'; font-size:10pt; font-weight:600;&quot;&gt;Syncing Oximetry and CPAP Data&lt;/span&gt;&lt;/p&gt;
-&lt;p align=&quot;justify&quot; style=&quot;-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; font-family:'Sans'; font-size:10pt;&quot;&gt;&lt;br /&gt;&lt;/p&gt;
-&lt;p align=&quot;justify&quot; style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-family:'Sans'; font-size:10pt;&quot;&gt;CMS50 data imported from SpO2Review (from .spoR files) or the serial import method do &lt;/span&gt;&lt;span style=&quot; font-family:'Sans'; font-size:10pt; font-weight:600; text-decoration: underline;&quot;&gt;not&lt;/span&gt;&lt;span style=&quot; font-family:'Sans'; font-size:10pt;&quot;&gt; have the correct timestamp needed to sync.&lt;/span&gt;&lt;/p&gt;
-&lt;p align=&quot;justify&quot; style=&quot;-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; font-family:'Sans'; font-size:10pt;&quot;&gt;&lt;br /&gt;&lt;/p&gt;
-&lt;p align=&quot;justify&quot; style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-family:'Sans'; font-size:10pt;&quot;&gt;Live view mode (using a serial cable) is one way to acheive an accurate sync on CMS50 oximeters, but does not counter for CPAP clock drift.&lt;/span&gt;&lt;/p&gt;
-&lt;p align=&quot;justify&quot; style=&quot;-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; font-family:'Sans'; font-size:10pt;&quot;&gt;&lt;br /&gt;&lt;/p&gt;
-&lt;p align=&quot;justify&quot; style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-family:'Sans'; font-size:10pt;&quot;&gt;If you start your Oximeters recording mode at &lt;/span&gt;&lt;span style=&quot; font-family:'Sans'; font-size:10pt; font-style:italic;&quot;&gt;exactly &lt;/span&gt;&lt;span style=&quot; font-family:'Sans'; font-size:10pt;&quot;&gt;the same time you start your CPAP machine, you can now also achieve sync. &lt;/span&gt;&lt;/p&gt;
-&lt;p align=&quot;justify&quot; style=&quot;-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; font-family:'Sans'; font-size:10pt;&quot;&gt;&lt;br /&gt;&lt;/p&gt;
-&lt;p align=&quot;justify&quot; style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-family:'Sans'; font-size:10pt;&quot;&gt;The serial import process takes the starting time from last nights first CPAP session. (Remember to import your CPAP data first!)&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-            </property>
            </widget>
           </item>
          </layout>
@@ -1871,7 +1854,7 @@ p, li { white-space: pre-wrap; }
                </sizepolicy>
               </property>
               <property name="text">
-               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Warning: &lt;/span&gt;Just because you can, does not mean it's good practice.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+               <string>Just because you can, does not mean it's good practice.</string>
               </property>
               <property name="alignment">
                <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -1950,7 +1933,7 @@ p, li { white-space: pre-wrap; }
                </sizepolicy>
               </property>
               <property name="text">
-               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Warning: &lt;/span&gt;Just because you can, does not mean it's good practice.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+               <string>Just because you can, does not mean it's good practice.</string>
               </property>
               <property name="alignment">
                <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -2296,7 +2279,7 @@ Mainly affects the importer.</string>
                <item row="2" column="1">
                 <widget class="QComboBox" name="openingTabCombo">
                  <property name="toolTip">
-                  <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Which tab to open on loading a profile. (Note: It will default to Profile if OSCAR is set to not open a profile on startup)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                  <string>Which tab to open on loading a profile. (Note: It will default to Profile if OSCAR is set to not open a profile on startup)</string>
                  </property>
                  <property name="currentText">
                   <string>Profile</string>
@@ -2594,7 +2577,7 @@ Mainly affects the importer.</string>
                  <item>
                   <widget class="QSlider" name="scrollDampeningSlider">
                    <property name="toolTip">
-                    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;This makes scrolling when zoomed in easier on sensitive bidirectional TouchPads&lt;/p&gt;&lt;p&gt;50ms is recommended value.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                    <string>This makes scrolling when zoomed in easier on sensitive bidirectional TouchPads; 50ms is recommended value.</string>
                    </property>
                    <property name="maximum">
                     <number>25</number>
@@ -2708,7 +2691,7 @@ Try it and see if you like it.</string>
                <item>
                 <widget class="QCheckBox" name="animationsAndTransitionsCheckbox">
                  <property name="toolTip">
-                  <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;These features have recently been pruned. They will come back later. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                  <string>These features have recently been pruned. They will come back later.</string>
                  </property>
                  <property name="text">
                   <string>Animations &amp;&amp; Fancy Stuff</string>
@@ -2738,7 +2721,7 @@ Try it and see if you like it.</string>
                <item>
                 <widget class="QCheckBox" name="includeSerial">
                  <property name="toolTip">
-                  <string>Whether to include machine serial number on machine settings changes report</string>
+                  <string>Whether to include device serial number on device settings changes report</string>
                  </property>
                  <property name="text">
                   <string>Include Serial Number</string>

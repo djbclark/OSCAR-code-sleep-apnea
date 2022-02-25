@@ -63,15 +63,15 @@ PreferencesDialog::PreferencesDialog(QWidget *parent, Profile *_profile) :
             }
         }
     } else {
-        if (QMessageBox::question(this, tr("No CPAP machines detected"),
-                tr("Will you be using a ResMed brand machine?"),
+        if (QMessageBox::question(this, tr("No CPAP devices detected"),
+                tr("Will you be using a ResMed brand device?"),
                 QMessageBox::Yes, QMessageBox::No) == QMessageBox::Yes )
             haveResMed = true;
     }
 
 #ifdef LOCK_RESMED_SESSIONS
     // Remove access to session splitting options and show ResMed users a notice instead
-    ui->ResMedWarning->setText(tr("<p><b>Please Note:</b> OSCAR's advanced session splitting capabilities are not possible with <b>ResMed</b> machines due to a limitation in the way their settings and summary data is stored, and therefore they have been disabled for this profile.</p><p>On ResMed machines, days will <b>split at noon</b> like in ResMed's commercial software.</p>"));
+    ui->ResMedWarning->setText(tr("<p><b>Please Note:</b> OSCAR's advanced session splitting capabilities are not possible with <b>ResMed</b> devices due to a limitation in the way their settings and summary data is stored, and therefore they have been disabled for this profile.</p><p>On ResMed devices, days will <b>split at noon</b> like in ResMed's commercial software.</p>"));
     ui->ResMedWarning->setVisible(haveResMed);
 
     if (haveResMed) {
@@ -104,7 +104,7 @@ PreferencesDialog::PreferencesDialog(QWidget *parent, Profile *_profile) :
     ui->gfxEngineCombo->setCurrentIndex(selIdx);
 
 
-    ui->culminativeIndices->setEnabled(false);
+    ui->CumulativeIndices->setEnabled(false);
 
     QLocale locale = QLocale::system();
     QString shortformat = locale.dateFormat(QLocale::ShortFormat);
@@ -1162,7 +1162,7 @@ void PreferencesDialog::on_createSDBackups_toggled(bool checked)
 
         if (haveS9 && QMessageBox::question(this,
                 tr("This may not be a good idea"),
-                tr("ResMed S9 machines routinely delete certain data from your SD card older than 7 and 30 days (depending on resolution).") +
+                tr("ResMed S9 devices routinely delete certain data from your SD card older than 7 and 30 days (depending on resolution).") +
                 tr(" If you ever need to reimport this data again (whether in OSCAR or ResScan) this data won't come back.") +
                 tr(" If you need to conserve disk space, please remember to carry out manual backups.") +
                 tr(" Are you sure you want to disable these backups?"),
@@ -1281,12 +1281,12 @@ void PreferencesDialog::on_waveView_doubleClicked(const QModelIndex &index)
 
 void PreferencesDialog::on_maskLeaks4Slider_valueChanged(int value)
 {
-    ui->maskLeaks4Label->setText(tr("%1 %2").arg(value/10.0f, 5,'f',1).arg(STR_UNIT_LPM));
+    ui->maskLeaks4Label->setText(QString("%1 %2").arg(value/10.0f, 5,'f',1).arg(STR_UNIT_LPM));
 }
 
 void PreferencesDialog::on_maskLeaks20Slider_valueChanged(int value)
 {
-    ui->maskLeaks20Label->setText(tr("%1 %2").arg(value/10.0f, 5,'f',1).arg(STR_UNIT_LPM));
+    ui->maskLeaks20Label->setText(QString("%1 %2").arg(value/10.0f, 5,'f',1).arg(STR_UNIT_LPM));
 }
 
 void PreferencesDialog::on_calculateUnintentionalLeaks_toggled(bool)

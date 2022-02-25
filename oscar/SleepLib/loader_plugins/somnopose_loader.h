@@ -40,7 +40,7 @@ class SomnoposeLoader : public MachineLoader
     }
 
 
-  //Machine *CreateMachine();
+  //device *CreateMachine();
 
   protected:
   private:

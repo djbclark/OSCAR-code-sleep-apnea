@@ -86,7 +86,7 @@
 </ul></li>
 <li>[new] Update translation files and add new languages</li>
 <li>[new] Allow user to reset graph order on the Daily page to Standard (for CPAP and APAP) or Advanced order (for ASV and AVAPS modes)</li>
-<li>[new] Add preference setting to include the serial number on machine settings list</li>
+<li>[new] Add preference setting to include the serial number on device settings list</li>
 <li>[fix] Place date, time, and Oscar version information in report footers</li>
 <li>[fix] Update identification of ResMed S9 devices on the Welcome page</li>
 <li>[fix] Correct formatting of event number in the Daily Events tab</li>
@@ -166,7 +166,7 @@
 <li>[fix] Fix some oximeter import issues</li>
 <li>[fix] Use local time rather than UTC in oximeter import</li>
 <li>[fix] Improve screen capture on Mac</li>
-<li>[fix] Fix crashes in CPAP data rebuild, purging of a machine</li>
+<li>[fix] Fix crashes in CPAP data rebuild, purging of a device</li>
 <li>[fix] Prevent crash if taking a screenshot before a profile is opened</li>
 <li>[fix] Increase mask vent ranges</li>
 <li>[fix] Correct session bar if no sessions are present</li>
@@ -181,7 +181,7 @@
 <li>[fix] Adjust the size of the Preferences dialog to fit smaller screens</li>
 <li>[fix] Label climate control as manual or auto correctly on ResMed import</li>
 <li>[fix] Move less useful information from title bar to Help/System Information</li>
-<li>[fix] Change "Prescription Settings" to "Machine Settings" message</li>
+<li>[fix] Change "Prescription Settings" to "device Settings" message</li>
 <li>[fix] Improve icons, especially smaller ones</li>
 <li>[fix] Correct Mac menu issues</li>
 <li>[fix] Improve messages in debug pane</li>
@@ -253,7 +253,7 @@
 <li>Added code to migrate an old data directory to a new data directory</li>
 <li>Removed "-d" startup option and "Change directory" file menu item. Use the
 "--datadir foldername" startup option to create or change the data directory.</li>
-<li>Various fixes to tab and button visibility depending on profile and machine data presence.</li>
+<li>Various fixes to tab and button visibility depending on profile and device data presence.</li>
 </ul>
 </p>
 <p>

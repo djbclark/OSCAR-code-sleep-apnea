@@ -35,7 +35,7 @@ class ZEOLoader : public MachineLoader
     virtual int Version() { return zeo_data_version; }
     virtual const QString &loaderName() { return zeo_class_name; }
 
-    //Machine *CreateMachine();
+    //device *CreateMachine();
     virtual MachineInfo newInfo() {
         return MachineInfo(MT_SLEEPSTAGE, 0, zeo_class_name, QObject::tr("Zeo"), QString(), QString(), QString(), QObject::tr("Personal Sleep Coach"), QDateTime::currentDateTime(), zeo_data_version);
     }

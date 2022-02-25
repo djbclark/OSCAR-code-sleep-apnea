@@ -501,7 +501,7 @@ void Overview::ResetGraphOrder(int type)
 // Process new range selection from combo button
 void Overview::on_rangeCombo_activated(int index)
 {
-    ui->dateStart->setMinimumDate(p_profile->FirstDay());  // first and last dates for ANY machine type
+    ui->dateStart->setMinimumDate(p_profile->FirstDay());  // first and last dates for ANY device type
     ui->dateEnd->setMaximumDate(p_profile->LastDay());
 
     // Exclude Journal in calculating the last day
@@ -591,7 +591,7 @@ void Overview::on_rangeCombo_activated(int index)
     progress->close();
     delete progress;
 
-    // first and last dates for ANY machine type
+    // first and last dates for ANY device type
     setRange(start, end);
 }
 

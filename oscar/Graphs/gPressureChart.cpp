@@ -28,7 +28,7 @@ gPressureChart::gPressureChart()
     addCalc(CPAP_IPAP, ST_MID);
     addCalc(CPAP_IPAP, ST_90P);
 
-    // PRS1 reports pressure adjustments instead of observed pressures on some machines
+    // PRS1 reports pressure adjustments instead of observed pressures on some devices
     addCalc(CPAP_PressureSet, ST_MID);
     addCalc(CPAP_PressureSet, ST_90P);
     addCalc(CPAP_EPAPSet, ST_MID);
@@ -70,7 +70,7 @@ void gPressureChart::afterDraw(QPainter &, gGraph &graph, QRectF rect)
     }
 
     if (getCalc(CPAP_PressureMin, ST_SETMIN)->cnt > 0) {
-        // TODO: If using machines from different manufacturers in an overview,
+        // TODO: If using devices from different manufacturers in an overview,
         // the below may not accurately find the APAP pressure channel for all
         // days; but it only affects the summary label at the top.
         ChannelID pressure = CPAP_Pressure;

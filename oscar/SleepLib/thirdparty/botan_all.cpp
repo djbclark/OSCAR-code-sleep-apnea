@@ -1691,7 +1691,7 @@ This circuit has size 113 and depth 27. In software it is much faster than
 circuits which are considered faster for hardware purposes (where circuit depth
 is the critical constraint), because unlike in hardware, on common CPUs we can
 only execute - at best - 3 or 4 logic operations per cycle. So a smaller circuit
-is superior. On an x86-64 machine this circuit is about 15% faster than the
+is superior. On an x86-64 device this circuit is about 15% faster than the
 circuit of size 128 and depth 16 given in "A depth-16 circuit for the AES S-box".
 
 Another circuit for AES Sbox of size 102 and depth 24 is describted in "New
@@ -3582,10 +3582,10 @@ namespace Botan {
 
 namespace {
 
-uint64_t flags_by_ios_machine_type(const std::string& machine)
+uint64_t flags_by_ios_machine_type(const std::string& device)
    {
    /*
-   * This relies on a map of known machine names to features. This
+   * This relies on a map of known device names to features. This
    * will quickly grow out of date as new products are introduced, but
    * is apparently the best we can do for iOS.
    */
@@ -6766,7 +6766,7 @@ uint8_t ct_compare_u8(const uint8_t x[],
 
 }
 /*
-* OS and machine specific utility functions
+* OS and device specific utility functions
 * (C) 2015,2016,2017,2018 Jack Lloyd
 * (C) 2016 Daniel Neus
 *
@@ -7097,7 +7097,7 @@ size_t OS::get_memory_locking_limit()
    * enough to run the entire test suite without spilling to non-mlock
    * memory (and thus presumably also enough for many useful
    * programs), but small enough that we should not cause problems
-   * even if many processes are mlocking on the same machine.
+   * even if many processes are mlocking on the same device.
    */
    const size_t user_req = read_env_variable_sz("BOTAN_MLOCK_POOL_SIZE", BOTAN_MLOCK_ALLOCATOR_MAX_LOCKED_KB);
 

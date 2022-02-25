@@ -40,7 +40,7 @@ Important: One id code per item, DO NOT CHANGE ID NUMBERS!!!
   </channel>
  </group>
  <group name="MACHINE">
-  <!-- General Per Machine Settings -->
+  <!-- General Per Device Settings -->
   <channel id="0xf000" class="setting" scope="!machine" name="Type" details="Type" label="Type" type="integer">
    <option id="0" value="Unknown"/>
    <option id="1" value="CPAP"/>

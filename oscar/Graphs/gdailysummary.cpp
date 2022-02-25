@@ -261,7 +261,7 @@ void gDailySummary::paint(QPainter &painter, gGraph &w, const QRegion &region)
     maxwidth *= 1.1;
 
     QRectF rect3 = QRectF(xpos, tpos, 0, 0);
-    QString machinfo = QObject::tr("Machine Information");
+    QString machinfo = QObject::tr("Device Information");
 
     rect3 = painter.boundingRect(rect1, Qt::AlignTop | Qt::AlignLeft, machinfo);
     maxwidth = qMax(rect1.width(), maxwidth);
