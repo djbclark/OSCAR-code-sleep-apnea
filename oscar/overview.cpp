@@ -24,6 +24,10 @@
 #endif
 
 
+// Features enabled by conditional compilation.
+#define ENABLE_GENERAL_MODIFICATION_OF_CALENDARS
+#define ENABLE_START_END_WIDGET_DISPLAY_ACTUAL_GRAPH_RANGE
+
 #include <QCalendarWidget>
 #include <QTextCharFormat>
 #include <QDebug>
@@ -591,6 +595,9 @@ void Overview::on_XBoundsChanged(qint64 start,qint64 end)
         chartsEmpty.clear();
         updateGraphCombo();
     }
+    #if defined(ENABLE_START_END_WIDGET_DISPLAY_ACTUAL_GRAPH_RANGE)
+    setRange(displayStartDate,displayEndDate, false);
+    #endif
 }
 
 void Overview::dateStart_currentPageChanged(int year, int month)
@@ -644,7 +651,7 @@ void Overview::on_zoomButton_clicked()
 {
     // the Current behaviour is to zoom back to the last range created by on_rangeCombo_activation
     // so do just that
-    on_rangeCombo_activated(p_profile->general->lastOverviewRange());  // type of range in last use
+    on_rangeCombo_activated(ui->rangeCombo->currentIndex());
 }
 
 void Overview::ResetGraphLayout()
@@ -703,13 +710,6 @@ void Overview::on_rangeCombo_activated(int index)
             p_profile->general->setCustomOverviewRangeEnd(end);
             index=8;
             ui->rangeCombo->setCurrentIndex(index);
-        } else if (customMode) {      // last mode was custom.
-            // Reset Custom Range to current range in calendar widget
-            // Custom mode MUST be initialized to false when the Custom Instance is created.
-            start = uiStartDate;
-            end = uiEndDate;
-            p_profile->general->setCustomOverviewRangeStart(start);
-            p_profile->general->setCustomOverviewRangeEnd(end);
         } else {
             // have a change in RangeCombo selection. Use last saved values.
             start = p_profile->general->customOverviewRangeStart() ;
@@ -720,10 +720,12 @@ void Overview::on_rangeCombo_activated(int index)
     if (start < p_profile->FirstDay()) { start = p_profile->FirstDay(); }
 
     customMode = (index == 8) ;
+    #if !defined(ENABLE_GENERAL_MODIFICATION_OF_CALENDARS)
     ui->dateStartLabel->setEnabled(customMode);
     ui->dateEndLabel->setEnabled(customMode);
     ui->dateEnd->setEnabled(customMode);
     ui->dateStart->setEnabled(customMode);
+    #endif
 
 
     p_profile->general->setLastOverviewRange(index);  // type of range in last use
