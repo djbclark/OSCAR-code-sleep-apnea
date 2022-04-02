@@ -650,8 +650,8 @@ void Overview::on_dateStart_dateChanged(const QDate &date)
 void Overview::on_zoomButton_clicked()
 {
     // the Current behaviour is to zoom back to the last range created by on_rangeCombo_activation
-    // so do just that
-    on_rangeCombo_activated(ui->rangeCombo->currentIndex());
+    // This change preserves OSCAR behaviour
+    on_rangeCombo_activated(p_profile->general->lastOverviewRange());  // type of range in last use
 }
 
 void Overview::ResetGraphLayout()
@@ -751,9 +751,6 @@ void Overview::on_rangeCombo_activated(int index)
     progress->close();
     delete progress;
 
-    // first and last dates for ANY machine type
-    //uiStartDate=start;
-    //uiEndDate=end;
     setRange(start, end);
 }
 
