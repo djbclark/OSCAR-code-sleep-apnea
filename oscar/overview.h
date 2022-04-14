@@ -143,6 +143,7 @@ class Overview : public QWidget
     void disconnectgSummaryCharts() ;
     void SetXBounds(qint64 minx, qint64 maxx, short group = 0, bool refresh = true);
     void SetXBounds(QDate & start, QDate&  end, short group =0 , bool refresh  = true);
+	void setUiDate(bool startDate, QDate& date);
 
     // Start and of dates of the current graph display
     QDate displayStartDate;
@@ -160,6 +161,7 @@ class Overview : public QWidget
     // Actual dates displayed in Start/End Widgets.
     QDate uiStartDate;
     QDate uiEndDate;
+	QString shortformat;
 
     // Are start and end widgets displaying the same month.
     bool samePage;

@@ -12,11 +12,13 @@
 #include <QRegularExpression>
 #define DEBUGQ  qDebug()
 #define DEBUGL  qDebug()<<QString(basename( __FILE__)).remove(QRegularExpression("\\..*$")) << __LINE__
-#define DEBUGF  qDebug()<<QString(basename( __FILE__)).remove(QRegularExpression("\\..*$")) << __LINE__ << __func__
+//#define DEBUGF  qDebug()<< QString(basename( __FILE__)).remove(QRegularExpression("\\..*$")) << __LINE__ << __func__
+#define DEBUGF  qDebug()<< QString("%1[%2]%3").arg( QString(basename( __FILE__)).remove(QRegularExpression("\\..*$")) ).arg(__LINE__).arg(__func__)
+#define DEBUGT  qDebug()<<QDateTime::currentDateTime().time().toString("hh:mm:ss.zzz") 
 #define DEBUGTF qDebug()<<QDateTime::currentDateTime().time().toString("hh:mm:ss.zzz") << QString(basename( __FILE__)).remove(QRegularExpression("\\..*$")) << __LINE__ << __func__
-#define DEBUGT qDebug()<<QDateTime::currentDateTime().time().toString("hh:mm:ss.zzz") 
-
 #define O( XX ) " " #XX ":" << XX
+#define Q( XX ) << #XX ":" << XX
+#define R( XX ) 
 #define OO( XX , YY ) " " #XX ":" << YY
 #define NAME( id) schema::channel[ id ].label()
 #define DATE( XX ) QDateTime::fromMSecsSinceEpoch(XX).toString("dd MMM yyyy")
@@ -74,7 +76,7 @@ Overview::Overview(QWidget *parent, gGraphView *shared) :
 
     // Set Date controls locale to 4 digit years
     QLocale locale = QLocale::system();
-    QString shortformat = locale.dateFormat(QLocale::ShortFormat);
+    shortformat = locale.dateFormat(QLocale::ShortFormat);
 
     if (!shortformat.toLower().contains("yyyy")) {
         shortformat.replace("yy", "yyyy");
@@ -624,6 +626,13 @@ void Overview::dateEnd_currentPageChanged(int year, int month)
 
 void Overview::on_dateEnd_dateChanged(const QDate &date)
 {
+	if (date<uiStartDate) {
+		// change date back to last date.
+		QString dateEntered = date.toString(shortformat);
+		dateLabel->setText(QString("Error:%1 < StartDate").arg(dateEntered));
+		setUiDate(false,uiEndDate);
+		return;
+	}
     QDate d2(date);
     if (customMode) {
         p_profile->general->setCustomOverviewRangeEnd(d2);
@@ -636,6 +645,13 @@ void Overview::on_dateEnd_dateChanged(const QDate &date)
 
 void Overview::on_dateStart_dateChanged(const QDate &date)
 {
+	if (date>uiEndDate) {
+		// change date back to last date.
+		QString dateEntered = date.toString(shortformat);
+		dateLabel->setText(QString("Error:%1 > EndDate").arg(dateEntered));
+		setUiDate(true,uiStartDate);
+		return;
+    }
     QDate d1(date);
     if (customMode) {
         p_profile->general->setCustomOverviewRangeStart(d1);
@@ -732,7 +748,7 @@ void Overview::on_rangeCombo_activated(int index)
 
     // Ensure that all summary files are available and update version numbers if required
     int size = start.daysTo(end);
-    qDebug() << "Overview range combo from" << start << "to" << end << "with" << size << "days";
+    // qDebug() << "Overview range combo from" << start << "to" << end << "with" << size << "days";
     QDate dateback = end;
     CProgressBar * progress = new CProgressBar (QObject::tr("Loading summaries"), mainwin, size);
     for (int i=1; i < size; ++i) {
@@ -752,6 +768,15 @@ void Overview::on_rangeCombo_activated(int index)
     delete progress;
 
     setRange(start, end);
+}
+
+void Overview::setUiDate(bool startDate, QDate& date) {
+	QDateEdit* uid = startDate?ui->dateStart:ui->dateEnd;
+    uid->blockSignals(true);
+    uid->setMinimumDate(p_profile->FirstDay());  // first and last dates for ANY machine type
+    uid->setMaximumDate(p_profile->LastDay());
+    uid->setDate(date);
+    uid->blockSignals(false);
 }
 
 // Saves dates in UI, clicks zoom button, and updates combo box
@@ -777,21 +802,9 @@ void Overview::setRange(QDate& start, QDate& end, bool updateGraphs/*zoom*/)
         samePage=nextSamePage;
     }
 
-    ui->dateEnd->blockSignals(true);
-    ui->dateStart->blockSignals(true);
+	setUiDate(false, uiEndDate);
+	setUiDate(true, uiStartDate);
 
-    // Calling these methods for the first time trigger pageChange actions.
-    ui->dateEnd->setDate(end);
-    ui->dateEnd->setMinimumDate(start);
-
-    ui->dateStart->setMinimumDate(p_profile->FirstDay());  // first and last dates for ANY machine type
-    ui->dateEnd->setMaximumDate(p_profile->LastDay());
-
-    ui->dateStart->setDate(start);
-    ui->dateStart->setMaximumDate(end);
-
-    ui->dateEnd->blockSignals(false);
-    ui->dateStart->blockSignals(false);
     if (updateGraphs) SetXBounds(uiStartDate,uiEndDate);
     updateGraphCombo();
 }
