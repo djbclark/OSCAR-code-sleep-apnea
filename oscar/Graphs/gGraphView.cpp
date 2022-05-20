@@ -38,7 +38,7 @@
 #include "mainwindow.h"
 #include "Graphs/glcommon.h"
 #include "Graphs/gLineChart.h"
-#include "Graphs/gSummaryChart.h"
+#include "Graphs/SummaryChart.h"
 #include "Graphs/gSessionTimesChart.h"
 #include "Graphs/gYAxis.h"
 #include "Graphs/gFlagsLine.h"
