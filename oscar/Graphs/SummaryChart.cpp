@@ -11,7 +11,7 @@
 #include <QLabel>
 #include <QDateTime>
 #include "gYAxis.h"
-#include "gSummaryChart.h"
+#include "SummaryChart.h"
 
 SummaryChart::SummaryChart(QString label, GraphType type)
     : Layer(NoChannel), m_label(label), m_graphtype(type)

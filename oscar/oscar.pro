@@ -279,7 +279,7 @@ SOURCES += \
     Graphs/gSegmentChart.cpp \
     Graphs/gspacer.cpp \
     Graphs/gStatsLine.cpp \
-    Graphs/gSummaryChart.cpp \
+    Graphs/SummaryChart.cpp \
     Graphs/gXAxis.cpp \
     Graphs/gYAxis.cpp \
     Graphs/layer.cpp \
@@ -380,7 +380,7 @@ HEADERS  += \
     Graphs/gSegmentChart.h\
     Graphs/gspacer.h \
     Graphs/gStatsLine.h \
-    Graphs/gSummaryChart.h \
+    Graphs/SummaryChart.h \
     Graphs/gXAxis.h \
     Graphs/gYAxis.h \
     Graphs/layer.h \

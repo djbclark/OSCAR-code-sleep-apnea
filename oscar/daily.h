@@ -25,7 +25,7 @@
 
 #include "SleepLib/profiles.h"
 #include "mainwindow.h"
-#include "Graphs/gSummaryChart.h"
+#include "Graphs/SummaryChart.h"
 #include "Graphs/gGraphView.h"
 #include "Graphs/gLineChart.h"
 #include "sessionbar.h"

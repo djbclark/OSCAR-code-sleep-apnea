@@ -7,8 +7,8 @@
  * License. See the file COPYING in the main directory of the source code
  * for more details. */
 
-#ifndef GBARCHART_H
-#define GBARCHART_H
+#ifndef SUMMARYCHART_H
+#define SUMMARYCHART_H
 
 #include <SleepLib/profiles.h>
 #include "gGraphView.h"
@@ -151,4 +151,4 @@ class SummaryChart: public Layer
 };
 
 
-#endif // GBARCHART_H
+#endif // SUMMARYCHART_H
