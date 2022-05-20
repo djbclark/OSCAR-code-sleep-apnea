@@ -19,7 +19,7 @@
 #include <QTimer>
 #include "SleepLib/profiles.h"
 #include "Graphs/gGraphView.h"
-#include "Graphs/gSummaryChart.h"
+#include "Graphs/SummaryChart.h"
 #include "Graphs/gSessionTimesChart.h"
 
 namespace Ui {
